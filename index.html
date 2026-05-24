@@ -15,38 +15,6 @@
       <p>Tap suits below to toggle the cards in your hand</p>
     </header>
 
-    <!-- Hand Summary Dashboard -->
-    <section class="card-panel">
-      <h2 class="panel-title">Your Hand Summary</h2>
-      <div id="handDashboard" class="hand-dashboard">
-        <!-- Placeholder when hand is empty -->
-        <div id="emptyPlaceholder" class="hand-empty-placeholder">
-          Your hand is currently empty. Tap a suit to start adding cards!
-        </div>
-        
-        <!-- Individual suit rows (hidden or structured dynamically) -->
-        <div id="suitRowS" class="hand-suit-row empty hidden" data-suit="S">
-          <div class="hand-suit-badge suit-S">♠</div>
-          <div id="suitChipsS" class="hand-suit-chips"></div>
-        </div>
-        
-        <div id="suitRowH" class="hand-suit-row empty hidden" data-suit="H">
-          <div class="hand-suit-badge suit-H">♥</div>
-          <div id="suitChipsH" class="hand-suit-chips"></div>
-        </div>
-        
-        <div id="suitRowD" class="hand-suit-row empty hidden" data-suit="D">
-          <div class="hand-suit-badge suit-D">♦</div>
-          <div id="suitChipsD" class="hand-suit-chips"></div>
-        </div>
-        
-        <div id="suitRowC" class="hand-suit-row empty hidden" data-suit="C">
-          <div class="hand-suit-badge suit-C">♣</div>
-          <div id="suitChipsC" class="hand-suit-chips"></div>
-        </div>
-      </div>
-    </section>
-
     <!-- Card Input Selector Grid -->
     <section class="card-panel selector-section">
       <h2 class="panel-title">Select Suit & Ranks</h2>
@@ -96,6 +64,38 @@
           
           <!-- None / Clear Suit Button (14th Option) -->
           <button id="nonePill" class="rank-pill none-pill">Select None</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hand Summary Dashboard -->
+    <section class="card-panel">
+      <h2 class="panel-title">Your Hand Summary</h2>
+      <div id="handDashboard" class="hand-dashboard">
+        <!-- Placeholder when hand is empty -->
+        <div id="emptyPlaceholder" class="hand-empty-placeholder">
+          Your hand is currently empty. Tap a suit to start adding cards!
+        </div>
+        
+        <!-- Individual suit rows (hidden or structured dynamically) -->
+        <div id="suitRowS" class="hand-suit-row empty hidden" data-suit="S">
+          <div class="hand-suit-badge suit-S">♠</div>
+          <div id="suitChipsS" class="hand-suit-chips"></div>
+        </div>
+        
+        <div id="suitRowH" class="hand-suit-row empty hidden" data-suit="H">
+          <div class="hand-suit-badge suit-H">♥</div>
+          <div id="suitChipsH" class="hand-suit-chips"></div>
+        </div>
+        
+        <div id="suitRowD" class="hand-suit-row empty hidden" data-suit="D">
+          <div class="hand-suit-badge suit-D">♦</div>
+          <div id="suitChipsD" class="hand-suit-chips"></div>
+        </div>
+        
+        <div id="suitRowC" class="hand-suit-row empty hidden" data-suit="C">
+          <div class="hand-suit-badge suit-C">♣</div>
+          <div id="suitChipsC" class="hand-suit-chips"></div>
         </div>
       </div>
     </section>
