@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Spades Trick Predictor</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>♠️</text></svg>" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1>♠ Trick Predictor</h1>
+      <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
+    </header>
+
+    <!-- Setup screen (first run / no API key) -->
+    <section id="setupScreen" class="screen hidden">
+      <div class="card setup-card">
+        <h2>Welcome</h2>
+        <p class="muted">
+          This app uses Claude vision to read your cards. You'll need an
+          Anthropic API key — it's stored only in your browser and never sent anywhere except to Anthropic.
+        </p>
+        <label for="apiKeyInput">Anthropic API key</label>
+        <input id="apiKeyInput" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+        <p class="hint">
+          Don't have one? Get a key at
+          <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>.
+        </p>
+        <button id="saveKeyBtn" class="primary">Save & continue</button>
+      </div>
+    </section>
+
+    <!-- Main capture screen -->
+    <section id="captureScreen" class="screen hidden">
+      <div class="card">
+        <h2>Scan your hand</h2>
+        <p class="muted">
+          Fan your cards so every rank and suit is visible. Good light helps.
+        </p>
+
+        <label for="fileInput" id="dropzone" class="dropzone">
+          <div class="dropzone-inner">
+            <div class="camera-icon">📷</div>
+            <div class="dz-text">Tap to take or pick a photo</div>
+            <div class="dz-sub">JPG, PNG, HEIC supported</div>
+          </div>
+          <input id="fileInput" type="file" accept="image/*" capture="environment" hidden />
+        </label>
+
+        <div id="preview" class="preview hidden">
+          <img id="previewImg" alt="Your hand" />
+          <button id="retakeBtn" class="ghost">Retake</button>
+        </div>
+
+        <button id="predictBtn" class="primary full" disabled>Predict my tricks</button>
+      </div>
+    </section>
+
+    <!-- Loading -->
+    <section id="loadingScreen" class="screen hidden">
+      <div class="card center">
+        <div class="spinner" aria-hidden="true"></div>
+        <p id="loadingText">Reading your cards…</p>
+      </div>
+    </section>
+
+    <!-- Result -->
+    <section id="resultScreen" class="screen hidden">
+      <div class="card">
+        <div class="result-head">
+          <div class="result-num">
+            <div class="num" id="predTricks">–</div>
+            <div class="num-label">predicted tricks</div>
+          </div>
+          <div class="confidence">
+            <span id="confidencePill" class="pill">–</span>
+          </div>
+        </div>
+
+        <div class="meta-row">
+          <div><strong id="handSize">–</strong><span class="muted"> cards in hand</span></div>
+          <div><strong id="spadeCount">–</strong><span class="muted"> spades</span></div>
+        </div>
+
+        <h3 class="section-title">Your hand</h3>
+        <ul id="cardList" class="card-list"></ul>
+
+        <h3 class="section-title">Why this bid</h3>
+        <ul id="reasoningList" class="reasoning"></ul>
+
+        <div class="actions">
+          <button id="againBtn" class="ghost">Scan another hand</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section id="settingsScreen" class="screen hidden">
+      <div class="card">
+        <h2>Settings</h2>
+        <label for="apiKeyEdit">Anthropic API key</label>
+        <input id="apiKeyEdit" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+
+        <label for="modelSelect">Model</label>
+        <select id="modelSelect">
+          <option value="claude-sonnet-4-6">Sonnet 4.6 (recommended)</option>
+          <option value="claude-haiku-4-5-20251001">Haiku 4.5 (cheaper/faster)</option>
+          <option value="claude-opus-4-7">Opus 4.7 (most accurate)</option>
+        </select>
+
+        <div class="actions">
+          <button id="settingsSaveBtn" class="primary">Save</button>
+          <button id="settingsBackBtn" class="ghost">Back</button>
+        </div>
+
+        <p class="hint danger">
+          <button id="clearKeyBtn" class="link-btn">Forget my API key</button>
+        </p>
+      </div>
+    </section>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
