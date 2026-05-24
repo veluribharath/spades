@@ -994,3 +994,25 @@ footer a:hover {
   }
 }
 
+/* Inline editable team name input styles */
+.standing-name-input {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed transparent;
+  text-align: center;
+  width: 100%;
+  outline: none;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  transition: all var(--transition-fast);
+}
+
+.standing-name-input:hover, .standing-name-input:focus {
+  border-bottom-color: rgba(255, 255, 255, 0.15);
+  color: var(--text);
+}

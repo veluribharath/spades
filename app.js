@@ -29,6 +29,8 @@
     // Scorekeeper Match Tracking
     scorekeeper: {
       rules: 'progressive', // 'progressive' or 'standard'
+      teamAName: 'Team A',
+      teamBName: 'Team B',
       teamAScore: 0,
       teamBScore: 0,
       teamABags: 0,
@@ -119,8 +121,26 @@
       resetBtn.addEventListener('click', resetMatch);
     }
 
+    // 10. Scorekeeper: Custom Team Name Dynamic Listeners
+    const nameInputA = $('teamANameInput');
+    const nameInputB = $('teamBNameInput');
+    
+    if (nameInputA) {
+      nameInputA.addEventListener('input', () => {
+        state.scorekeeper.teamAName = nameInputA.value.trim() || 'Team A';
+        updateUIWithTeamNames();
+      });
+    }
+    if (nameInputB) {
+      nameInputB.addEventListener('input', () => {
+        state.scorekeeper.teamBName = nameInputB.value.trim() || 'Team B';
+        updateUIWithTeamNames();
+      });
+    }
+
     // Initial render to set up default placeholders & info labels
     updateSettingsInfo();
+    updateUIWithTeamNames();
     renderAll();
     renderScoreboard();
   }
@@ -680,6 +700,28 @@
     renderScoreboard();
   }
 
+  // Sync team custom names to headings, selectors, and scoreboard table headers
+  function updateUIWithTeamNames() {
+    const s = state.scorekeeper;
+
+    // Update Log Round Form Labels
+    const lblA = $('labelTeamA');
+    const lblB = $('labelTeamB');
+    if (lblA) lblA.textContent = s.teamAName;
+    if (lblB) lblB.textContent = s.teamBName;
+
+    // Update Scorecard History Table headers
+    const hdrA = $('headerTeamA');
+    const hdrB = $('headerTeamB');
+    const hdrScA = $('headerScoreA');
+    const hdrScB = $('headerScoreB');
+    
+    if (hdrA) hdrA.textContent = `${s.teamAName} (Bid/Act)`;
+    if (hdrB) hdrB.textContent = `${s.teamBName} (Bid/Act)`;
+    if (hdrScA) hdrScA.textContent = `${s.teamAName} Score`;
+    if (hdrScB) hdrScB.textContent = `${s.teamBName} Score`;
+  }
+
   // Handle score logging submission
   function submitRound() {
     const bidAInput = $('bidTeamA');
@@ -729,7 +771,17 @@
     if (state.scorekeeper.rounds.length === 0) return;
     
     if (confirm('Are you sure you want to reset the current match scoreboard?')) {
-      state.scorekeeper.rounds = [];
+      const s = state.scorekeeper;
+      s.rounds = [];
+      s.teamAName = 'Team A';
+      s.teamBName = 'Team B';
+      
+      const inputA = $('teamANameInput');
+      const inputB = $('teamBNameInput');
+      if (inputA) inputA.value = 'Team A';
+      if (inputB) inputB.value = 'Team B';
+
+      updateUIWithTeamNames();
       recalculateMatch();
       toast('Scores reset.');
     }
@@ -737,7 +789,6 @@
 
   // Custom Toast helper
   function toast(msg) {
-    // Reuses existing toast block if styled in HTML, otherwise use fallback
     const t = document.createElement('div');
     t.className = 'toast';
     t.textContent = msg;

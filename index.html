@@ -177,13 +177,13 @@
         <h2 class="panel-title">Current Match Standings</h2>
         <div class="scoreboard-standings">
           <div class="standing-team team-a">
-            <span class="standing-name">Team A (Us)</span>
+            <input type="text" id="teamANameInput" class="standing-name-input" value="Team A" placeholder="Edit Team A" autocomplete="off" spellcheck="false" aria-label="Team A Name" />
             <div id="scoreTeamA" class="standing-score">0</div>
             <span class="standing-bags">Bags: <strong id="bagsTeamA">0 / 10</strong></span>
           </div>
           
           <div class="standing-team team-b">
-            <span class="standing-name">Team B (Them)</span>
+            <input type="text" id="teamBNameInput" class="standing-name-input" value="Team B" placeholder="Edit Team B" autocomplete="off" spellcheck="false" aria-label="Team B Name" />
             <div id="scoreTeamB" class="standing-score">0</div>
             <span class="standing-bags">Bags: <strong id="bagsTeamB">0 / 10</strong></span>
           </div>
@@ -212,7 +212,7 @@
             <div class="grid-header-label" style="text-align: center;">Tricks Won</div>
 
             <!-- Team A -->
-            <div class="grid-team-label team-a">Team A (Us)</div>
+            <div class="grid-team-label team-a" id="labelTeamA">Team A</div>
             <div>
               <input type="number" id="bidTeamA" class="form-number-input" placeholder="0" min="0" max="13" />
             </div>
@@ -221,7 +221,7 @@
             </div>
 
             <!-- Team B -->
-            <div class="grid-team-label team-b">Team B (Them)</div>
+            <div class="grid-team-label team-b" id="labelTeamB">Team B</div>
             <div>
               <input type="number" id="bidTeamB" class="form-number-input" placeholder="0" min="0" max="13" />
             </div>
@@ -246,10 +246,10 @@
             <thead>
               <tr>
                 <th>Round</th>
-                <th>Team A (Bid/Act)</th>
-                <th>Team A Score</th>
-                <th>Team B (Bid/Act)</th>
-                <th>Team B Score</th>
+                <th id="headerTeamA">Team A (Bid/Act)</th>
+                <th id="headerScoreA">Team A Score</th>
+                <th id="headerTeamB">Team B (Bid/Act)</th>
+                <th id="headerScoreB">Team B Score</th>
               </tr>
             </thead>
             <tbody id="scoreboardBody">
