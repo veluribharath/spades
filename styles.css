@@ -1020,3 +1020,96 @@ footer a:hover {
   border-bottom-color: rgba(255, 255, 255, 0.15);
   color: var(--text);
 }
+
+/* --- Collapsible Game Configuration Panel Accordion Styles --- */
+.config-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: padding var(--transition-normal);
+}
+
+.config-header-title {
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.config-header-summary {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(16, 185, 129, 0.08);
+  padding: 4px 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  margin-left: auto;
+  margin-right: 12px;
+  font-family: 'Outfit', sans-serif;
+  transition: all var(--transition-fast);
+}
+
+.config-header:hover .config-header-summary {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-hover);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.config-toggle-arrow {
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform var(--transition-normal);
+}
+
+/* Accordion expanded transitions */
+.card-panel-config {
+  padding: 16px 24px;
+}
+
+.card-panel-config.expanded {
+  padding-bottom: 24px;
+}
+
+.card-panel-config.expanded .config-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.card-panel-config.expanded .config-toggle-arrow {
+  transform: rotate(180deg);
+  color: var(--text);
+}
+
+.config-drawer {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height var(--transition-normal), opacity var(--transition-normal);
+}
+
+.card-panel-config.expanded .config-drawer {
+  max-height: 250px;
+  opacity: 1;
+}
+
+@media (max-width: 480px) {
+  .card-panel-config {
+    padding: 12px 18px;
+  }
+  .config-header-summary {
+    font-size: 11px;
+    padding: 2px 8px;
+    margin-right: 8px;
+  }
+}

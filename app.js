@@ -22,7 +22,7 @@
       C: []  // Clubs
     },
     activeSuit: null, // 'S', 'H', 'D', or 'C'
-    decks: 1, // Number of decks (1, 2, or 3)
+    decks: 2, // Number of decks (1, 2, or 3)
     players: 4, // Number of players (2 to 8)
     activeTab: 'predictor', // 'predictor' or 'scorekeeper'
     
@@ -86,9 +86,18 @@
         btn.classList.add('active');
         state.players = parseInt(btn.getAttribute('data-players'));
         updateSettingsInfo();
+        updateConfigHeaderSummary();
         renderAll();
       });
     });
+
+    // 5b. Collapsible Game Configuration Panel Accordion Trigger
+    const configHeader = $('configHeader');
+    if (configHeader) {
+      configHeader.addEventListener('click', () => {
+        $('configPanel').classList.toggle('expanded');
+      });
+    }
 
     // 6. Navigation Tabs Event Handlers
     const navPredictor = $('tabPredictor');
@@ -141,6 +150,7 @@
     // Initial render to set up default placeholders & info labels
     updateSettingsInfo();
     updateUIWithTeamNames();
+    updateConfigHeaderSummary();
     renderAll();
     renderScoreboard();
   }
@@ -228,6 +238,7 @@
     });
     
     updateSettingsInfo();
+    updateConfigHeaderSummary();
     syncRankPills();
     renderAll();
   }
@@ -239,6 +250,14 @@
     const info = $('settingsInfo');
     if (info) {
       info.textContent = `${state.decks} ${state.decks === 1 ? 'Deck' : 'Decks'} (${totalCards} cards) with ${state.players} players. Maximum hand size is ${maxHand} cards.`;
+    }
+  }
+
+  // Update Collapsible Config Summary text based on decks and players
+  function updateConfigHeaderSummary() {
+    const summary = $('configHeaderSummary');
+    if (summary) {
+      summary.textContent = `${state.decks} Deck${state.decks > 1 ? 's' : ''} • ${state.players} Players`;
     }
   }
 

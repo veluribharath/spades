@@ -28,33 +28,40 @@
     <!-- Predictor Screen Wrapper -->
     <div id="predictorScreen" class="view-screen">
       <!-- Game Configuration Settings -->
-    <section class="card-panel">
-      <h2 class="panel-title">Game Configuration</h2>
-      <div class="settings-panel">
-        <div class="settings-row">
-          <span class="settings-label">Number of Decks:</span>
-          <div class="settings-pills" id="deckPills">
-            <button class="settings-pill-btn active" data-decks="1">1 Deck</button>
-            <button class="settings-pill-btn" data-decks="2">2 Decks</button>
-            <button class="settings-pill-btn" data-decks="3">3 Decks</button>
-          </div>
+      <section id="configPanel" class="card-panel card-panel-config">
+        <div id="configHeader" class="config-header">
+          <div class="config-header-title">⚙️ Game Configuration</div>
+          <div id="configHeaderSummary" class="config-header-summary">2 Decks • 4 Players</div>
+          <div class="config-toggle-arrow">▼</div>
         </div>
         
-        <div class="settings-row">
-          <span class="settings-label">Number of Players:</span>
-          <div class="settings-pills" id="playerPills">
-            <button class="settings-pill-btn" data-players="2">2</button>
-            <button class="settings-pill-btn active" data-players="4">4</button>
-            <button class="settings-pill-btn" data-players="6">6</button>
-            <button class="settings-pill-btn" data-players="8">8</button>
+        <div id="configDrawer" class="config-drawer">
+          <div class="settings-panel" style="margin-top: 10px;">
+            <div class="settings-row">
+              <span class="settings-label">Number of Decks:</span>
+              <div class="settings-pills" id="deckPills">
+                <button class="settings-pill-btn" data-decks="1">1 Deck</button>
+                <button class="settings-pill-btn active" data-decks="2">2 Decks</button>
+                <button class="settings-pill-btn" data-decks="3">3 Decks</button>
+              </div>
+            </div>
+            
+            <div class="settings-row">
+              <span class="settings-label">Number of Players:</span>
+              <div class="settings-pills" id="playerPills">
+                <button class="settings-pill-btn" data-players="2">2</button>
+                <button class="settings-pill-btn active" data-players="4">4</button>
+                <button class="settings-pill-btn" data-players="6">6</button>
+                <button class="settings-pill-btn" data-players="8">8</button>
+              </div>
+            </div>
+            
+            <div id="settingsInfo" class="settings-info">
+              2 Decks (104 cards) with 4 players. Maximum hand size is 13 cards.
+            </div>
           </div>
         </div>
-        
-        <div id="settingsInfo" class="settings-info">
-          1 Deck (52 cards) with 4 players. Maximum hand size is 13 cards.
-        </div>
-      </div>
-    </section>
+      </section>
 
     <!-- Dynamic Trick Prediction Panel -->
     <section class="card-panel">
