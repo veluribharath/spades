@@ -23,7 +23,18 @@
     },
     activeSuit: null, // 'S', 'H', 'D', or 'C'
     decks: 1, // Number of decks (1, 2, or 3)
-    players: 4 // Number of players (2 to 8)
+    players: 4, // Number of players (2 to 8)
+    activeTab: 'predictor', // 'predictor' or 'scorekeeper'
+    
+    // Scorekeeper Match Tracking
+    scorekeeper: {
+      rules: 'progressive', // 'progressive' or 'standard'
+      teamAScore: 0,
+      teamBScore: 0,
+      teamABags: 0,
+      teamBBags: 0,
+      rounds: [] // Array of { roundNumber, bidA, actualA, scoreA, bagsA, bidB, actualB, scoreB, bagsB }
+    }
   };
 
   // Helper DOM Selector
@@ -33,7 +44,10 @@
   function init() {
     // 1. Suit Tabs Click Handlers
     ['S', 'H', 'D', 'C'].forEach(suit => {
-      $(`tab${suit}`).addEventListener('click', () => toggleSuitDrawer(suit));
+      const tab = $(`tab${suit}`);
+      if (tab) {
+        tab.addEventListener('click', () => toggleSuitDrawer(suit));
+      }
     });
 
     // 2. Rank Grid Pill Click Handlers
@@ -46,7 +60,10 @@
     });
 
     // 3. "Select None" Button Handler
-    $('nonePill').addEventListener('click', clearActiveSuit);
+    const noneBtn = $('nonePill');
+    if (noneBtn) {
+      noneBtn.addEventListener('click', clearActiveSuit);
+    }
 
     // 4. Game Configuration: Decks Selectors
     const deckButtons = document.querySelectorAll('#deckPills .settings-pill-btn');
@@ -71,9 +88,56 @@
       });
     });
 
+    // 6. Navigation Tabs Event Handlers
+    const navPredictor = $('tabPredictor');
+    if (navPredictor) {
+      navPredictor.addEventListener('click', () => switchTab('predictor'));
+    }
+    const navScorekeeper = $('tabScorekeeper');
+    if (navScorekeeper) {
+      navScorekeeper.addEventListener('click', () => switchTab('scorekeeper'));
+    }
+
+    // 7. Scorekeeper: Rules Selection Listener
+    const rulesSel = $('rulesSelect');
+    if (rulesSel) {
+      rulesSel.addEventListener('change', (e) => {
+        state.scorekeeper.rules = e.target.value;
+        recalculateMatch();
+      });
+    }
+
+    // 8. Scorekeeper: Submit Round Handler
+    const submitBtn = $('submitRoundBtn');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', submitRound);
+    }
+
+    // 9. Scorekeeper: Reset Match Handler
+    const resetBtn = $('resetMatchBtn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', resetMatch);
+    }
+
     // Initial render to set up default placeholders & info labels
     updateSettingsInfo();
     renderAll();
+    renderScoreboard();
+  }
+
+  // Switch navigation tabs
+  function switchTab(tabId) {
+    if (state.activeTab === tabId) return;
+
+    state.activeTab = tabId;
+    
+    // Toggle active classes on nav tab buttons
+    $('tabPredictor').classList.toggle('active', tabId === 'predictor');
+    $('tabScorekeeper').classList.toggle('active', tabId === 'scorekeeper');
+
+    // Toggle visibility on container screen panels
+    $('predictorScreen').classList.toggle('hidden', tabId !== 'predictor');
+    $('scorekeeperScreen').classList.toggle('hidden', tabId !== 'scorekeeper');
   }
 
   // Toggle the active suit selector drawer
@@ -106,7 +170,10 @@
   // Clear active tab styles
   function deactivateAllTabs() {
     ['S', 'H', 'D', 'C'].forEach(suit => {
-      $(`tab${suit}`).classList.remove('active');
+      const tab = $(`tab${suit}`);
+      if (tab) {
+        tab.classList.remove('active');
+      }
     });
   }
 
@@ -149,7 +216,10 @@
   function updateSettingsInfo() {
     const totalCards = state.decks * 52;
     const maxHand = Math.floor(totalCards / state.players);
-    $('settingsInfo').textContent = `${state.decks} ${state.decks === 1 ? 'Deck' : 'Decks'} (${totalCards} cards) with ${state.players} players. Maximum hand size is ${maxHand} cards.`;
+    const info = $('settingsInfo');
+    if (info) {
+      info.textContent = `${state.decks} ${state.decks === 1 ? 'Deck' : 'Decks'} (${totalCards} cards) with ${state.players} players. Maximum hand size is ${maxHand} cards.`;
+    }
   }
 
   // Add/Remove card value supporting multi-deck duplicates
@@ -537,6 +607,228 @@
         list.appendChild(li);
       });
     }
+  }
+
+  // ---------- PHASE 2 SCOREKEEPER CALCULATIONS ENGINE ----------
+
+  // Calculate score for a single team in a round
+  function calculateRoundScore(bid, actual, rules) {
+    let roundScore = 0;
+    let bags = 0;
+
+    if (rules === 'standard' && bid === 0) {
+      // Nil Bidding Heuristic
+      if (actual === 0) {
+        roundScore = 100; // Successful Nil
+      } else {
+        roundScore = -100; // Failed Nil
+        bags = actual; // tricks won are counted as bags
+      }
+    } else {
+      if (actual >= bid) {
+        // Successful Bid
+        roundScore = (bid * 10) + (actual - bid);
+        bags = (rules === 'standard') ? (actual - bid) : 0;
+      } else {
+        // Set (Failed Bid)
+        roundScore = -(bid * 10);
+        bags = 0;
+      }
+    }
+
+    return { roundScore, bags };
+  }
+
+  // Recalculates all rounds from scratch to dynamically adjust standings
+  function recalculateMatch() {
+    const s = state.scorekeeper;
+    
+    // Reset standing numbers
+    s.teamAScore = 0;
+    s.teamBScore = 0;
+    s.teamABags = 0;
+    s.teamBBags = 0;
+
+    s.rounds.forEach(r => {
+      const resA = calculateRoundScore(r.bidA, r.actualA, s.rules);
+      const resB = calculateRoundScore(r.bidB, r.actualB, s.rules);
+
+      r.scoreA = resA.roundScore;
+      r.bagsA = resA.bags;
+      r.scoreB = resB.roundScore;
+      r.bagsB = resB.bags;
+
+      // Accumulate
+      s.teamAScore += r.scoreA;
+      s.teamBScore += r.scoreB;
+      s.teamABags += r.bagsA;
+      s.teamBBags += r.bagsB;
+
+      // Standard Rules Bags Penalty Check (-100pts per 10 bags)
+      if (s.rules === 'standard') {
+        if (s.teamABags >= 10) {
+          s.teamAScore -= 100;
+          s.teamABags -= 10;
+        }
+        if (s.teamBBags >= 10) {
+          s.teamBScore -= 100;
+          s.teamBBags -= 10;
+        }
+      }
+    });
+
+    renderScoreboard();
+  }
+
+  // Handle score logging submission
+  function submitRound() {
+    const bidAInput = $('bidTeamA');
+    const actualAInput = $('actualTeamA');
+    const bidBInput = $('bidTeamB');
+    const actualBInput = $('actualTeamB');
+
+    const bidA = parseInt(bidAInput.value.trim());
+    const actualA = parseInt(actualAInput.value.trim());
+    const bidB = parseInt(bidBInput.value.trim());
+    const actualB = parseInt(actualBInput.value.trim());
+
+    // Validation
+    if (isNaN(bidA) || isNaN(actualA) || isNaN(bidB) || isNaN(actualB)) {
+      toast('Please fill in bids and tricks won for both teams.');
+      return;
+    }
+
+    if (bidA < 0 || actualA < 0 || bidB < 0 || actualB < 0) {
+      toast('Toggles / scores cannot be negative.');
+      return;
+    }
+
+    const s = state.scorekeeper;
+    const nextRoundNum = s.rounds.length + 1;
+
+    // Push into round history
+    s.rounds.push({
+      roundNumber: nextRoundNum,
+      bidA, actualA, scoreA: 0, bagsA: 0,
+      bidB, actualB, scoreB: 0, bagsB: 0
+    });
+
+    // Clear input fields
+    bidAInput.value = '';
+    actualAInput.value = '';
+    bidBInput.value = '';
+    actualBInput.value = '';
+
+    // Recompute total scores
+    recalculateMatch();
+    toast(`Round ${nextRoundNum} logged.`);
+  }
+
+  // Handle Scoreboard Reset
+  function resetMatch() {
+    if (state.scorekeeper.rounds.length === 0) return;
+    
+    if (confirm('Are you sure you want to reset the current match scoreboard?')) {
+      state.scorekeeper.rounds = [];
+      recalculateMatch();
+      toast('Scores reset.');
+    }
+  }
+
+  // Custom Toast helper
+  function toast(msg) {
+    // Reuses existing toast block if styled in HTML, otherwise use fallback
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => {
+      t.style.opacity = '0';
+      setTimeout(() => t.remove(), 300);
+    }, 2500);
+  }
+
+  // Renders Scorekeeper Screen
+  function renderScoreboard() {
+    const s = state.scorekeeper;
+
+    // Update standing numbers
+    $('scoreTeamA').textContent = String(s.teamAScore);
+    $('scoreTeamB').textContent = String(s.teamBScore);
+
+    // Dynamic bags display scaling
+    const bagsAWrapper = $('bagsTeamA').parentElement;
+    const bagsBWrapper = $('bagsTeamB').parentElement;
+
+    if (s.rules === 'progressive') {
+      bagsAWrapper.style.display = 'none';
+      bagsBWrapper.style.display = 'none';
+    } else {
+      bagsAWrapper.style.display = 'inline-block';
+      bagsBWrapper.style.display = 'inline-block';
+      $('bagsTeamA').textContent = `${s.teamABags} / 10`;
+      $('bagsTeamB').textContent = `${s.teamBBags} / 10`;
+    }
+
+    // Populate scorecard table rows
+    const tbody = $('scoreboardBody');
+    tbody.innerHTML = '';
+
+    if (s.rounds.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="color: var(--text-muted); font-style: italic; padding: 20px 0;">
+            No rounds recorded yet. Submit scores above!
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    s.rounds.forEach(r => {
+      const tr = document.createElement('tr');
+
+      // Round # cell
+      const tdRound = document.createElement('td');
+      tdRound.textContent = `R${r.roundNumber}`;
+      tr.appendChild(tdRound);
+
+      // Team A Bid/Act cell
+      const tdActA = document.createElement('td');
+      tdActA.innerHTML = `Bid: <strong>${r.bidA === 0 ? 'Nil' : r.bidA}</strong> / Won: <strong>${r.actualA}</strong>`;
+      tr.appendChild(tdActA);
+
+      // Team A Score cell
+      const tdScoreA = document.createElement('td');
+      const winA = r.scoreA >= 0;
+      tdScoreA.className = winA ? 'score-success' : 'score-fail';
+      
+      let scoreTextA = `${winA ? '+' : ''}${r.scoreA}`;
+      if (s.rules === 'standard' && r.bagsA > 0) {
+        scoreTextA += ` <span class="score-bags">(+${r.bagsA}🎒)</span>`;
+      }
+      tdScoreA.innerHTML = scoreTextA;
+      tr.appendChild(tdScoreA);
+
+      // Team B Bid/Act cell
+      const tdActB = document.createElement('td');
+      tdActB.innerHTML = `Bid: <strong>${r.bidB === 0 ? 'Nil' : r.bidB}</strong> / Won: <strong>${r.actualB}</strong>`;
+      tr.appendChild(tdActB);
+
+      // Team B Score cell
+      const tdScoreB = document.createElement('td');
+      const winB = r.scoreB >= 0;
+      tdScoreB.className = winB ? 'score-success' : 'score-fail';
+      
+      let scoreTextB = `${winB ? '+' : ''}${r.scoreB}`;
+      if (s.rules === 'standard' && r.bagsB > 0) {
+        scoreTextB += ` <span class="score-bags">(+${r.bagsB}🎒)</span>`;
+      }
+      tdScoreB.innerHTML = scoreTextB;
+      tr.appendChild(tdScoreB);
+
+      tbody.appendChild(tr);
+    });
   }
 
   // Start on content load

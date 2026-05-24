@@ -15,7 +15,19 @@
       <p>Tap suits below to toggle the cards in your hand</p>
     </header>
 
-    <!-- Game Configuration Settings -->
+    <!-- Navigation Tabs Header -->
+    <nav class="nav-tabs">
+      <button id="tabPredictor" class="nav-tab-btn active" aria-label="Open Predictor">
+        <span>♠</span> Predictor
+      </button>
+      <button id="tabScorekeeper" class="nav-tab-btn" aria-label="Open Scorekeeper">
+        <span>📊</span> Scorekeeper
+      </button>
+    </nav>
+
+    <!-- Predictor Screen Wrapper -->
+    <div id="predictorScreen" class="view-screen">
+      <!-- Game Configuration Settings -->
     <section class="card-panel">
       <h2 class="panel-title">Game Configuration</h2>
       <div class="settings-panel">
@@ -156,9 +168,104 @@
         <li class="empty-reason">Select cards above to calculate your expected Progressive Spades bid.</li>
       </ul>
     </section>
+    </div> <!-- End Predictor Screen Wrapper -->
+
+    <!-- Scorekeeper Screen Wrapper -->
+    <div id="scorekeeperScreen" class="view-screen hidden">
+      <!-- 1. Total Scores Standing Banner -->
+      <section class="card-panel">
+        <h2 class="panel-title">Current Match Standings</h2>
+        <div class="scoreboard-standings">
+          <div class="standing-team team-a">
+            <span class="standing-name">Team A (Us)</span>
+            <div id="scoreTeamA" class="standing-score">0</div>
+            <span class="standing-bags">Bags: <strong id="bagsTeamA">0 / 10</strong></span>
+          </div>
+          
+          <div class="standing-team team-b">
+            <span class="standing-name">Team B (Them)</span>
+            <div id="scoreTeamB" class="standing-score">0</div>
+            <span class="standing-bags">Bags: <strong id="bagsTeamB">0 / 10</strong></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Interactive Input Panel + Rules Selection -->
+      <section class="card-panel">
+        <h2 class="panel-title">Log Round Results</h2>
+        
+        <div class="settings-panel">
+          <!-- Rules config toggle -->
+          <div class="rules-toggle-container">
+            <span>Scoring Ruleset:</span>
+            <select id="rulesSelect" class="rules-select">
+              <option value="progressive">Progressive Spades (No Bag Limit, No Nil)</option>
+              <option value="standard">Standard Spades (10 Bags = -100pts, Nil = 100pts)</option>
+            </select>
+          </div>
+
+          <!-- Input fields -->
+          <div class="round-input-grid">
+            <!-- Headers -->
+            <div></div>
+            <div class="grid-header-label" style="text-align: center;">Team Bid</div>
+            <div class="grid-header-label" style="text-align: center;">Tricks Won</div>
+
+            <!-- Team A -->
+            <div class="grid-team-label team-a">Team A (Us)</div>
+            <div>
+              <input type="number" id="bidTeamA" class="form-number-input" placeholder="0" min="0" max="13" />
+            </div>
+            <div>
+              <input type="number" id="actualTeamA" class="form-number-input" placeholder="0" min="0" max="13" />
+            </div>
+
+            <!-- Team B -->
+            <div class="grid-team-label team-b">Team B (Them)</div>
+            <div>
+              <input type="number" id="bidTeamB" class="form-number-input" placeholder="0" min="0" max="13" />
+            </div>
+            <div>
+              <input type="number" id="actualTeamB" class="form-number-input" placeholder="0" min="0" max="13" />
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="btn-row">
+            <button id="submitRoundBtn" class="score-btn primary">Submit Round</button>
+            <button id="resetMatchBtn" class="score-btn secondary">Reset Match</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Scoreboard History Ledger -->
+      <section class="card-panel">
+        <h2 class="panel-title">Scoreboard History</h2>
+        <div class="scoreboard-table-container">
+          <table class="scoreboard-table">
+            <thead>
+              <tr>
+                <th>Round</th>
+                <th>Team A (Bid/Act)</th>
+                <th>Team A Score</th>
+                <th>Team B (Bid/Act)</th>
+                <th>Team B Score</th>
+              </tr>
+            </thead>
+            <tbody id="scoreboardBody">
+              <tr>
+                <td colspan="5" style="color: var(--text-muted); font-style: italic; padding: 20px 0;">
+                  No rounds recorded yet. Submit scores above!
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div> <!-- End Scorekeeper Screen Wrapper -->
 
     <footer>
-      <div>♠ Progressive Spades Trick Predictor</div>
+      <div>♠ Progressive Spades Trick Predictor & Scorekeeper</div>
       <div style="margin-top: 4px; opacity: 0.7;">Designed for 4-player 1-13 card progressive rounds</div>
     </footer>
   </main>

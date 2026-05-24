@@ -697,3 +697,300 @@ footer a:hover {
   margin-left: 2px;
   font-weight: 800;
 }
+
+/* --- Phase 2 Scorekeeper Layout & Navigation Styles --- */
+.nav-tabs {
+  display: flex;
+  background: rgba(15, 30, 26, 0.4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  margin-bottom: 8px;
+  gap: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.nav-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 0;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Outfit', sans-serif;
+}
+
+.nav-tab-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.nav-tab-btn.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
+}
+
+/* Tab screens view controllers */
+.view-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.view-screen.hidden {
+  display: none !important;
+}
+
+/* Scoreboard standings layout */
+.scoreboard-standings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  text-align: center;
+}
+
+.standing-team {
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.standing-team.team-a {
+  border-left: 3px solid var(--suit-spade);
+}
+
+.standing-team.team-b {
+  border-left: 3px solid var(--suit-red);
+}
+
+.standing-name {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+.standing-score {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  margin: 6px 0;
+}
+
+.standing-team.team-a .standing-score {
+  color: var(--suit-spade);
+  text-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+}
+
+.standing-team.team-b .standing-score {
+  color: var(--suit-red);
+  text-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+}
+
+.standing-bags {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.standing-bags strong {
+  color: var(--gold);
+}
+
+/* Round input forms */
+.round-input-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 10px 14px;
+  align-items: center;
+}
+
+.grid-header-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.grid-team-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.grid-team-label.team-a { color: var(--suit-spade); }
+.grid-team-label.team-b { color: var(--suit-red); }
+
+.form-number-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  outline: none;
+  font-family: 'Outfit', sans-serif;
+  transition: all var(--transition-fast);
+}
+
+.form-number-input:focus {
+  border-color: var(--accent);
+  background: rgba(16, 185, 129, 0.05);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+/* Rule config checkbox layouts */
+.rules-toggle-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+}
+
+.rules-select {
+  background: rgba(15, 30, 26, 0.85);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Action button rows */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.score-btn {
+  flex: 1;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  transition: all var(--transition-fast);
+}
+
+.score-btn.primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+}
+
+.score-btn.primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.score-btn.secondary {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.score-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.score-btn:active {
+  transform: scale(0.985);
+}
+
+/* Scrollable Scoreboard Ledger Table */
+.scoreboard-table-container {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.scoreboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: center;
+  min-width: 440px;
+}
+
+.scoreboard-table th {
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 10px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.scoreboard-table td {
+  padding: 10px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--text);
+}
+
+.scoreboard-table tr:last-child td {
+  border-bottom: none;
+}
+
+.scoreboard-table tr:hover td {
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.scoreboard-table td.score-success {
+  color: #34d399; /* Neon Emerald for Win */
+  font-weight: 700;
+}
+
+.scoreboard-table td.score-fail {
+  color: #f87171; /* Neon Red for Set */
+  font-weight: 700;
+}
+
+.scoreboard-table td.score-bags {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* responsive grid adjustments for scoreboard standings */
+@media (max-width: 400px) {
+  .scoreboard-standings {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
