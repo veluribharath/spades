@@ -56,6 +56,31 @@
       </div>
     </section>
 
+    <!-- Dynamic Trick Prediction Panel -->
+    <section class="card-panel">
+      <h2 class="panel-title">Real-Time Prediction</h2>
+      
+      <div class="prediction-head">
+        <div id="predictionCircle" class="prediction-circle">
+          <div id="predTricks" class="prediction-number">—</div>
+          <div class="prediction-subtext">Tricks</div>
+        </div>
+        
+        <div class="prediction-summary">
+          <span id="confidencePill" class="confidence-pill low">No Bid</span>
+          <div class="stats-row">
+            <span>Hand size: <strong id="handSize">0</strong></span>
+            <span>Spades: <strong id="spadeCount">0</strong></span>
+          </div>
+        </div>
+      </div>
+      
+      <h3 class="panel-title" style="margin-top: 10px; border-bottom: none; font-size: 14px;">Prediction Logic Breakdown</h3>
+      <ul id="reasoningList" class="reasoning-list">
+        <li class="empty-reason">Select cards above to calculate your expected Progressive Spades bid.</li>
+      </ul>
+    </section>
+
     <!-- Card Input Selector Grid -->
     <section class="card-panel selector-section">
       <h2 class="panel-title">Select Suit & Ranks</h2>
@@ -139,31 +164,6 @@
           <div id="suitChipsC" class="hand-suit-chips"></div>
         </div>
       </div>
-    </section>
-
-    <!-- Dynamic Trick Prediction Panel -->
-    <section class="card-panel">
-      <h2 class="panel-title">Real-Time Prediction</h2>
-      
-      <div class="prediction-head">
-        <div id="predictionCircle" class="prediction-circle">
-          <div id="predTricks" class="prediction-number">—</div>
-          <div class="prediction-subtext">Tricks</div>
-        </div>
-        
-        <div class="prediction-summary">
-          <span id="confidencePill" class="confidence-pill low">No Bid</span>
-          <div class="stats-row">
-            <span>Hand size: <strong id="handSize">0</strong></span>
-            <span>Spades: <strong id="spadeCount">0</strong></span>
-          </div>
-        </div>
-      </div>
-      
-      <h3 class="panel-title" style="margin-top: 10px; border-bottom: none; font-size: 14px;">Prediction Logic Breakdown</h3>
-      <ul id="reasoningList" class="reasoning-list">
-        <li class="empty-reason">Select cards above to calculate your expected Progressive Spades bid.</li>
-      </ul>
     </section>
     </div> <!-- End Predictor Screen Wrapper -->
 
