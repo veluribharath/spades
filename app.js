@@ -99,6 +99,14 @@
       });
     }
 
+    // 5c. Collapsible Real-Time Prediction Panel Accordion Trigger
+    const predictionHeader = $('predictionHeader');
+    if (predictionHeader) {
+      predictionHeader.addEventListener('click', () => {
+        $('predictionPanel').classList.toggle('expanded');
+      });
+    }
+
     // 6. Navigation Tabs Event Handlers
     const navPredictor = $('tabPredictor');
     if (navPredictor) {
@@ -606,6 +614,7 @@
     const circle = $('predictionCircle');
     const confidence = $('confidencePill');
     const list = $('reasoningList');
+    const headerSummary = $('predictionHeaderSummary');
 
     $('handSize').textContent = String(p.handSize);
     $('spadeCount').textContent = String(p.spadeCount);
@@ -618,6 +627,10 @@
       confidence.textContent = 'No Bid';
       
       list.innerHTML = `<li class="empty-reason">Select cards above to calculate your expected Progressive Spades bid.</li>`;
+      
+      if (headerSummary) {
+        headerSummary.textContent = 'No Cards Selected';
+      }
       return;
     }
 
@@ -627,6 +640,11 @@
     // Set confidence classes
     confidence.className = `confidence-pill ${p.confidence}`;
     confidence.textContent = p.confidence + ' confidence';
+
+    // Update Collapsible Header Summary Badge
+    if (headerSummary) {
+      headerSummary.textContent = `${p.tricks} Trick${p.tricks !== 1 ? 's' : ''} (${p.handSize} Card${p.handSize !== 1 ? 's' : ''} • ${p.confidence} Conf)`;
+    }
 
     // Render detailed reasoning bullets
     list.innerHTML = '';
