@@ -1,428 +1,411 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'spades.apiKey';
-  const MODEL_KEY = 'spades.model';
-  const DEFAULT_MODEL = 'claude-sonnet-4-6';
-  const API_URL = 'https://api.anthropic.com/v1/messages';
+  // Constants
+  const RANK_VALUES = {
+    '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
+    'J': 11, 'Q': 12, 'K': 13, 'A': 14
+  };
+  const VALUE_TO_RANK = {
+    2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
+    11: 'J', 12: 'Q', 13: 'K', 14: 'A'
+  };
+  const SUIT_SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣' };
+  const SUIT_NAMES = { S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs' };
 
-  const RANK_VALUE = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
-  const SUIT_SYMBOL = { S: '♠', H: '♥', D: '♦', C: '♣' };
-  const SUIT_NAME = { S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs' };
+  // Application State
+  const state = {
+    hand: {
+      S: [], // Spades (array of numerical values)
+      H: [], // Hearts
+      D: [], // Diamonds
+      C: []  // Clubs
+    },
+    activeSuit: null // 'S', 'H', 'D', or 'C'
+  };
 
-  // ---------- DOM ----------
+  // Helper DOM Selector
   const $ = (id) => document.getElementById(id);
-  const screens = ['setupScreen', 'captureScreen', 'loadingScreen', 'resultScreen', 'settingsScreen'];
-  let lastImageBase64 = null;
-  let lastImageMediaType = 'image/jpeg';
 
-  function showScreen(id) {
-    screens.forEach((s) => $(s).classList.toggle('hidden', s !== id));
-    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
-  }
-
-  function toast(msg, ms = 2800) {
-    const t = $('toast');
-    t.textContent = msg;
-    t.classList.remove('hidden');
-    clearTimeout(toast._t);
-    toast._t = setTimeout(() => t.classList.add('hidden'), ms);
-  }
-
-  function getKey() { return localStorage.getItem(STORAGE_KEY) || ''; }
-  function setKey(k) { localStorage.setItem(STORAGE_KEY, k); }
-  function clearKey() { localStorage.removeItem(STORAGE_KEY); }
-  function getModel() { return localStorage.getItem(MODEL_KEY) || DEFAULT_MODEL; }
-  function setModel(m) { localStorage.setItem(MODEL_KEY, m); }
-
-  // ---------- Image preprocessing ----------
-  async function fileToNormalizedJpeg(file, maxDim = 1200, quality = 0.85) {
-    const dataUrl = await new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.onerror = reject;
-      r.readAsDataURL(file);
+  // Initialize Event Listeners
+  function init() {
+    // Suit Tabs Click Handlers
+    ['S', 'H', 'D', 'C'].forEach(suit => {
+      $(`tab${suit}`).addEventListener('click', () => toggleSuitDrawer(suit));
     });
 
-    const img = await new Promise((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = () => reject(new Error('Could not load image. If it\'s a HEIC photo, try saving as JPEG first.'));
-      i.src = dataUrl;
+    // Rank Grid Pill Click Handlers
+    const rankButtons = document.querySelectorAll('.ranks-grid .rank-pill:not(.none-pill)');
+    rankButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const rank = button.getAttribute('data-rank');
+        toggleCard(rank);
+      });
     });
 
-    let { width, height } = img;
-    if (width > maxDim || height > maxDim) {
-      const scale = Math.min(maxDim / width, maxDim / height);
-      width = Math.round(width * scale);
-      height = Math.round(height * scale);
+    // "Select None" Button Handler
+    $('nonePill').addEventListener('click', clearActiveSuit);
+
+    // Initial render to set up default placeholders
+    renderAll();
+  }
+
+  // Toggle the active suit selector drawer
+  function toggleSuitDrawer(suit) {
+    const drawer = $('ranksDrawer');
+    
+    // If clicking already active suit, close the drawer
+    if (state.activeSuit === suit) {
+      state.activeSuit = null;
+      drawer.classList.remove('open');
+      deactivateAllTabs();
+      return;
     }
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, width, height);
-    const jpegDataUrl = canvas.toDataURL('image/jpeg', quality);
-    const base64 = jpegDataUrl.split(',')[1];
-    return { base64, mediaType: 'image/jpeg', previewUrl: jpegDataUrl };
+
+    // Set new active suit
+    state.activeSuit = suit;
+    
+    // Update drawer classes for matching styling theme
+    drawer.className = 'ranks-drawer open ' + getSuitClassName(suit);
+    $('activeSuitText').innerHTML = `Configuring <strong>${SUIT_NAMES[suit]}</strong>`;
+
+    // Highlight the active suit tab button
+    deactivateAllTabs();
+    $(`tab${suit}`).classList.add('active');
+
+    // Sync the rank grid pills to match current state of this suit
+    syncRankPills();
   }
 
-  // ---------- Claude vision call ----------
-  const VISION_PROMPT = `You are a card recognition assistant. Look at the photo of playing cards in a player's hand.
+  // Clear active tab styles
+  function deactivateAllTabs() {
+    ['S', 'H', 'D', 'C'].forEach(suit => {
+      $(`tab${suit}`).classList.remove('active');
+    });
+  }
 
-Return ONLY a single JSON object with this exact shape, no prose:
+  // Map suit character to matching CSS theme class
+  function getSuitClassName(suit) {
+    if (suit === 'S') return 'spade';
+    if (suit === 'C') return 'club';
+    if (suit === 'H') return 'heart';
+    if (suit === 'D') return 'diamond';
+    return '';
+  }
 
-{
-  "cards": [
-    { "rank": "A" | "K" | "Q" | "J" | "10" | "9" | "8" | "7" | "6" | "5" | "4" | "3" | "2", "suit": "S" | "H" | "D" | "C" }
-  ],
-  "uncertain": boolean,
-  "notes": "optional short explanation if anything was hard to read"
-}
+  // Add/Remove a card value to/from the active suit
+  function toggleCard(rank) {
+    if (!state.activeSuit) return;
+    
+    const suit = state.activeSuit;
+    const value = RANK_VALUES[rank];
+    const index = state.hand[suit].indexOf(value);
 
-Rules:
-- Suits: S=spades, H=hearts, D=diamonds, C=clubs.
-- Include EVERY visible card. Do not invent cards you can't see clearly.
-- If a card is partially hidden but you can identify both rank and suit, include it.
-- If you genuinely cannot identify a card, set "uncertain" to true and describe it in "notes" — do NOT guess.
-- No duplicates unless you actually see two of the same card (jokers/unusual decks).
-- Output strictly valid JSON. No markdown fences, no commentary.`;
+    if (index > -1) {
+      // Card exists, so remove it
+      state.hand[suit].splice(index, 1);
+    } else {
+      // Card doesn't exist, so add it
+      state.hand[suit].push(value);
+    }
 
-  async function identifyCards(base64, mediaType) {
-    const apiKey = getKey();
-    if (!apiKey) throw new Error('Missing API key.');
+    // Keep the array sorted descending
+    state.hand[suit].sort((a, b) => b - a);
 
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: getModel(),
-        max_tokens: 1024,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-              { type: 'text', text: VISION_PROMPT }
-            ]
+    // Sync UI
+    syncRankPills();
+    renderAll();
+  }
+
+  // Clear all card selections for the current active suit
+  function clearActiveSuit() {
+    if (!state.activeSuit) return;
+    
+    state.hand[state.activeSuit] = [];
+    
+    // Sync UI
+    syncRankPills();
+    renderAll();
+  }
+
+  // Highlight active rank pills based on state
+  function syncRankPills() {
+    if (!state.activeSuit) return;
+
+    const suit = state.activeSuit;
+    const activeValues = state.hand[suit];
+    
+    const rankButtons = document.querySelectorAll('.ranks-grid .rank-pill:not(.none-pill)');
+    rankButtons.forEach(button => {
+      const rank = button.getAttribute('data-rank');
+      const val = RANK_VALUES[rank];
+      
+      if (activeValues.includes(val)) {
+        button.classList.add('active');
+      } else {
+        button.classList.remove('active');
+      }
+    });
+  }
+
+  // Main render coordinator
+  function renderAll() {
+    renderHandSummary();
+    const prediction = calculateTricks();
+    renderPrediction(prediction);
+  }
+
+  // Renders the visual hand dashboard at the top
+  function renderHandSummary() {
+    let totalCards = 0;
+    const placeholder = $('emptyPlaceholder');
+
+    ['S', 'H', 'D', 'C'].forEach(suit => {
+      const row = $(`suitRow${suit}`);
+      const chipContainer = $(`suitChips${suit}`);
+      const cards = state.hand[suit];
+
+      totalCards += cards.length;
+
+      if (cards.length > 0) {
+        row.classList.remove('hidden');
+        row.classList.remove('empty');
+        chipContainer.innerHTML = '';
+
+        cards.forEach(val => {
+          const rank = VALUE_TO_RANK[val];
+          const chip = document.createElement('div');
+          
+          let suitClass = getSuitClassName(suit);
+          if (suit === 'H' || suit === 'D') {
+            suitClass = 'red';
           }
-        ]
-      })
+          
+          chip.className = `card-chip ${suitClass}`;
+          chip.innerHTML = `<span>${rank}</span><span class="suit-symbol">${SUIT_SYMBOLS[suit]}</span>`;
+          chipContainer.appendChild(chip);
+        });
+      } else {
+        row.classList.add('hidden');
+        row.classList.add('empty');
+        chipContainer.innerHTML = '';
+      }
     });
 
-    if (!res.ok) {
-      let detail = '';
-      try { const err = await res.json(); detail = err?.error?.message || ''; } catch (_) {}
-      if (res.status === 401) throw new Error('Invalid API key. Check it in Settings.');
-      if (res.status === 429) throw new Error('Rate limited. Wait a moment and try again.');
-      throw new Error(`API error (${res.status}). ${detail}`);
+    if (totalCards > 0) {
+      placeholder.classList.add('hidden');
+    } else {
+      placeholder.classList.remove('hidden');
     }
-
-    const data = await res.json();
-    const text = data?.content?.[0]?.text || '';
-    return parseCardsJSON(text);
   }
 
-  function parseCardsJSON(text) {
-    let cleaned = text.trim();
-    cleaned = cleaned.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
-    const firstBrace = cleaned.indexOf('{');
-    const lastBrace = cleaned.lastIndexOf('}');
-    if (firstBrace >= 0 && lastBrace > firstBrace) {
-      cleaned = cleaned.slice(firstBrace, lastBrace + 1);
-    }
-    let parsed;
-    try { parsed = JSON.parse(cleaned); }
-    catch (e) { throw new Error('Could not parse the model response. Try a clearer photo.'); }
+  // Real-Time Progressive Spades Trick Prediction Engine
+  function calculateTricks() {
+    const spades = state.hand.S;
+    const hearts = state.hand.H;
+    const diamonds = state.hand.D;
+    const clubs = state.hand.C;
 
-    if (!parsed || !Array.isArray(parsed.cards)) {
-      throw new Error('No cards detected. Try a clearer photo.');
-    }
-    const cards = parsed.cards
-      .filter((c) => c && RANK_VALUE[c.rank] && SUIT_SYMBOL[c.suit])
-      .map((c) => ({ rank: c.rank, suit: c.suit }));
-    if (cards.length === 0) throw new Error('No readable cards found. Try better lighting or angle.');
-    return { cards, uncertain: !!parsed.uncertain, notes: parsed.notes || '' };
-  }
-
-  // ---------- Prediction logic (Progressive Spades) ----------
-  // Returns { tricks, confidence: 'low'|'med'|'high', reasoning: string[] }
-  function predictTricks(cards) {
-    const handSize = cards.length;
-    const bySuit = { S: [], H: [], D: [], C: [] };
-    cards.forEach((c) => bySuit[c.suit].push(RANK_VALUE[c.rank]));
-    Object.keys(bySuit).forEach((s) => bySuit[s].sort((a, b) => b - a)); // desc
-
-    const spades = bySuit.S;
+    const handSize = spades.length + hearts.length + diamonds.length + clubs.length;
     const reasoning = [];
     let tricks = 0;
 
-    // --- Spade honors ---
+    if (handSize === 0) {
+      return { tricks: 0, confidence: 'No Bid', reasoning: [], handSize, spadeCount: 0 };
+    }
+
+    // --- 1. Spade (Trump) Honors ---
     if (spades.includes(14)) {
-      tricks += 1;
-      reasoning.push('A♠ → 1 sure trick (highest trump).');
+      tricks += 1.0;
+      reasoning.push({ text: 'A♠ → 1 sure trick (highest trump card).', type: 'trump-reason' });
     }
     if (spades.includes(13)) {
       if (spades.length >= 2) {
-        tricks += 1;
-        reasoning.push('K♠ is guarded → 1 likely trick.');
+        tricks += 1.0;
+        reasoning.push({ text: 'K♠ is guarded by other spades → 1 likely trick.', type: 'trump-reason' });
       } else {
         tricks += 0.6;
-        reasoning.push('K♠ singleton → can be caught by A♠ (partial credit).');
+        reasoning.push({ text: 'K♠ singleton → vulnerable to falling under the A♠ (partial credit).', type: 'trump-reason' });
       }
     }
     if (spades.includes(12)) {
       if (spades.length >= 3) {
         tricks += 0.7;
-        reasoning.push('Q♠ with 2+ guards → likely trick.');
+        reasoning.push({ text: 'Q♠ with 2+ guards → highly likely to pull a trick.', type: 'trump-reason' });
       } else if (spades.length === 2) {
         tricks += 0.4;
-        reasoning.push('Q♠ with one guard → maybe a trick.');
+        reasoning.push({ text: 'Q♠ with only 1 guard → moderate chance of winning.', type: 'trump-reason' });
       } else {
         tricks += 0.1;
-        reasoning.push('Q♠ singleton → unlikely to win.');
+        reasoning.push({ text: 'Q♠ singleton → highly likely to get caught.', type: 'trump-reason' });
       }
     }
     if (spades.includes(11) && spades.length >= 4) {
       tricks += 0.4;
-      reasoning.push('J♠ with 3+ guards → useful for late tricks.');
+      reasoning.push({ text: 'J♠ with 3+ guards → strong potential for late-round wins.', type: 'trump-reason' });
     }
 
-    // --- Side-suit aces & kings ---
-    ['H', 'D', 'C'].forEach((s) => {
-      const suit = bySuit[s];
+    // --- 2. Side-Suit Honors ---
+    ['H', 'D', 'C'].forEach(s => {
+      const suit = state.hand[s];
+      const symbol = SUIT_SYMBOLS[s];
+      const suitName = SUIT_NAMES[s];
+
       if (suit.length === 0) return;
+
       if (suit.includes(14)) {
-        // Aces usually win the first round of their suit.
         tricks += 0.95;
-        reasoning.push(`A${SUIT_SYMBOL[s]} → almost always 1 trick on the first round.`);
+        reasoning.push({ text: `A${symbol} → almost certain trick in the first round of ${suitName}.`, type: 'side-suit-reason' });
       }
       if (suit.includes(13)) {
         if (suit.length >= 2) {
           tricks += 0.55;
-          reasoning.push(`K${SUIT_SYMBOL[s]} guarded → often wins a trick.`);
+          reasoning.push({ text: `K${symbol} guarded → likely trick if the Ace is pulled early.`, type: 'side-suit-reason' });
         } else {
-          // Bare K — likely to fall to the Ace.
           tricks += 0.15;
-          reasoning.push(`K${SUIT_SYMBOL[s]} singleton → at risk of falling to the A.`);
+          reasoning.push({ text: `K${symbol} singleton → high risk of falling to the Ace.`, type: 'side-suit-reason' });
         }
       }
       if (suit.includes(12) && suit.length >= 3) {
         tricks += 0.25;
-        reasoning.push(`Q${SUIT_SYMBOL[s]} with 2+ guards → occasional trick.`);
+        reasoning.push({ text: `Q${symbol} with 2+ guards → minor value on long rounds.`, type: 'side-suit-reason' });
       }
     });
 
-    // --- Ruffing potential: long spades + short side suits ---
-    // Each spade beyond the 3rd has ruffing value (smaller when round is small).
-    const longSpadeBonus = Math.max(0, spades.length - 3);
-    if (longSpadeBonus > 0 && handSize >= 5) {
-      const ruffValue = Math.min(longSpadeBonus, 4) * 0.45;
+    // --- 3. Ruffing Potential (Short Side-Suits + Long Spades) ---
+    // In Progressive Spades, ruffing requires having a reasonable hand size
+    const longSpadeCount = Math.max(0, spades.length - 3);
+    if (longSpadeCount > 0 && handSize >= 5) {
+      const ruffValue = Math.min(longSpadeCount, 4) * 0.45;
       tricks += ruffValue;
-      reasoning.push(`${spades.length} spades total → extra ruffing tricks worth ~${ruffValue.toFixed(1)}.`);
+      reasoning.push({ text: `Ruffing potential with ${spades.length} Spades → adding ~${ruffValue.toFixed(1)} tricks.`, type: 'special-reason' });
     }
 
-    // Voids and singletons in side suits give ruffing tricks IF we have spades to ruff with.
+    // Short-suits offer ruffing if we have spades to control
     if (spades.length >= 2 && handSize >= 5) {
-      ['H', 'D', 'C'].forEach((s) => {
-        const len = bySuit[s].length;
+      ['H', 'D', 'C'].forEach(s => {
+        const len = state.hand[s].length;
+        const name = SUIT_NAMES[s].toLowerCase();
+        const symbol = SUIT_SYMBOLS[s];
+
         if (len === 0) {
           tricks += 0.5;
-          reasoning.push(`Void in ${SUIT_NAME[s].toLowerCase()} → can ruff right away.`);
-        } else if (len === 1 && !bySuit[s].includes(14)) {
+          reasoning.push({ text: `Void in ${name} ${symbol} → can trump/ruff on the first round of the suit.`, type: 'special-reason' });
+        } else if (len === 1 && !state.hand[s].includes(14)) {
           tricks += 0.25;
-          reasoning.push(`Singleton in ${SUIT_NAME[s].toLowerCase()} → ruffing chance after 1 round.`);
+          reasoning.push({ text: `Singleton in ${name} ${symbol} → rapid entry to ruffing in later rounds.`, type: 'special-reason' });
         }
       });
     }
 
-    // --- Small-hand adjustment ---
-    // In 1-2 card rounds, the prediction is mostly about whether you have any high card.
+    // --- 4. Micro Hand adjustments ---
+    const rawTricks = tricks;
+    
     if (handSize === 1) {
-      // One card. Win odds roughly = rank/14 if not a spade; higher if spade.
-      const c = cards[0];
-      const v = RANK_VALUE[c.rank];
-      let p;
-      if (c.suit === 'S') p = Math.min(1, v / 14 + 0.15);
-      else p = v / 14;
-      tricks = p;
-      reasoning.length = 0;
-      reasoning.push(`1-card round. ${c.rank}${SUIT_SYMBOL[c.suit]} wins ~${Math.round(p * 100)}% of the time.`);
+      // 1-card round: Trick odds purely determined by rank weight
+      const allSuits = ['S', 'H', 'D', 'C'];
+      let activeCard = null;
+      let activeSuit = null;
+      
+      allSuits.forEach(s => {
+        if (state.hand[s].length === 1) {
+          activeCard = state.hand[s][0];
+          activeSuit = s;
+        }
+      });
+
+      if (activeCard) {
+        let p = activeCard / 14;
+        if (activeSuit === 'S') {
+          p = Math.min(1.0, p + 0.15); // Trump bonus
+        }
+        tricks = p;
+        
+        reasoning.length = 0; // Clear other calculations
+        reasoning.push({ 
+          text: `1-card round: ${VALUE_TO_RANK[activeCard]}${SUIT_SYMBOLS[activeSuit]} wins approximately ${Math.round(p * 100)}% of the time in standard play.`, 
+          type: 'special-reason' 
+        });
+      }
     } else if (handSize === 2) {
-      tricks = Math.min(tricks, 2) * 0.85; // dampening — very luck-driven
+      // 2-card round: Extremely high variance, dampen predictions slightly
+      tricks = Math.min(tricks, 2.0) * 0.85;
     }
 
-    // --- Final rounding + clamping ---
-    const rawTricks = tricks;
-    let predicted = Math.round(tricks);
-    predicted = Math.max(0, Math.min(handSize, predicted));
+    // Rounding and Clamping
+    let finalPrediction = Math.round(tricks);
+    finalPrediction = Math.max(0, Math.min(handSize, finalPrediction));
 
-    // Confidence
-    let confidence;
-    if (handSize <= 2) confidence = 'low';
-    else if (handSize <= 6) confidence = 'med';
-    else confidence = 'high';
+    // Confidence Metrics
+    let confidence = 'med';
+    if (handSize <= 2) {
+      confidence = 'low';
+    } else if (handSize >= 7) {
+      confidence = 'high';
+    }
 
-    // If the raw is very close to the rounding boundary, soften confidence one notch.
-    const fractional = Math.abs(rawTricks - Math.round(rawTricks));
-    if (fractional > 0.35 && confidence !== 'low') {
+    // If mathematical raw score is near the boundary, lower confidence slightly
+    const fraction = Math.abs(rawTricks - Math.round(rawTricks));
+    if (fraction > 0.35 && confidence !== 'low') {
       confidence = confidence === 'high' ? 'med' : 'low';
     }
 
-    return { tricks: predicted, confidence, reasoning, raw: rawTricks };
+    return {
+      tricks: finalPrediction,
+      confidence,
+      reasoning,
+      handSize,
+      spadeCount: spades.length
+    };
   }
 
-  // ---------- Rendering ----------
-  function renderResult(parsed) {
-    const cards = parsed.cards;
-    const pred = predictTricks(cards);
+  // Render prediction outputs onto UI
+  function renderPrediction(p) {
+    const numberDiv = $('predTricks');
+    const circle = $('predictionCircle');
+    const confidence = $('confidencePill');
+    const list = $('reasoningList');
 
-    $('predTricks').textContent = String(pred.tricks);
-    const pill = $('confidencePill');
-    pill.className = 'pill ' + pred.confidence;
-    pill.textContent =
-      pred.confidence === 'high' ? 'High confidence' :
-      pred.confidence === 'med' ? 'Medium confidence' :
-      'Low confidence';
+    $('handSize').textContent = String(p.handSize);
+    $('spadeCount').textContent = String(p.spadeCount);
 
-    $('handSize').textContent = String(cards.length);
-    $('spadeCount').textContent = String(cards.filter((c) => c.suit === 'S').length);
+    if (p.handSize === 0) {
+      numberDiv.textContent = '—';
+      circle.classList.remove('has-bid');
+      
+      confidence.className = 'confidence-pill low';
+      confidence.textContent = 'No Bid';
+      
+      list.innerHTML = `<li class="empty-reason">Select cards above to calculate your expected Progressive Spades bid.</li>`;
+      return;
+    }
 
-    const list = $('cardList');
-    list.innerHTML = '';
-    const sorted = [...cards].sort((a, b) => {
-      const order = { S: 0, H: 1, D: 2, C: 3 };
-      if (order[a.suit] !== order[b.suit]) return order[a.suit] - order[b.suit];
-      return RANK_VALUE[b.rank] - RANK_VALUE[a.rank];
-    });
-    sorted.forEach((c) => {
-      const li = document.createElement('li');
-      const isSpade = c.suit === 'S';
-      const isStrong = !isSpade && RANK_VALUE[c.rank] >= 13; // A or K of side suit
-      const red = c.suit === 'H' || c.suit === 'D';
-      li.className = 'card-chip' + (isSpade ? ' spade' : isStrong ? ' strong' : '');
-      li.innerHTML = `<span>${c.rank}</span><span class="${red ? 'suit-red' : 'suit-black'}">${SUIT_SYMBOL[c.suit]}</span>`;
-      list.appendChild(li);
-    });
-
-    const r = $('reasoningList');
-    r.innerHTML = '';
-    if (pred.reasoning.length === 0) {
-      const li = document.createElement('li');
-      li.textContent = 'No strong cards — bidding 0 is reasonable.';
-      r.appendChild(li);
+    // Add glowing color highlights if predicted tricks are greater than 0
+    numberDiv.textContent = String(p.tricks);
+    if (p.tricks > 0) {
+      circle.classList.add('has-bid');
     } else {
-      pred.reasoning.forEach((line) => {
+      circle.classList.remove('has-bid');
+    }
+
+    // Set confidence classes
+    confidence.className = `confidence-pill ${p.confidence}`;
+    confidence.textContent = p.confidence + ' confidence';
+
+    // Render detailed reasoning bullets
+    list.innerHTML = '';
+    if (p.reasoning.length === 0) {
+      list.innerHTML = `<li class="empty-reason">No points/high card power detected. Bidding 0 is highly recommended.</li>`;
+    } else {
+      p.reasoning.forEach(item => {
         const li = document.createElement('li');
-        li.textContent = line;
-        r.appendChild(li);
+        li.className = item.type;
+        li.textContent = item.text;
+        list.appendChild(li);
       });
     }
-
-    if (parsed.uncertain && parsed.notes) {
-      const li = document.createElement('li');
-      li.style.borderLeftColor = 'var(--warn)';
-      li.textContent = `Note from the reader: ${parsed.notes}`;
-      r.appendChild(li);
-    }
-
-    showScreen('resultScreen');
   }
 
-  // ---------- Event wiring ----------
-  function init() {
-    // Initial screen
-    if (getKey()) showScreen('captureScreen');
-    else showScreen('setupScreen');
-
-    // Setup
-    $('saveKeyBtn').addEventListener('click', () => {
-      const v = $('apiKeyInput').value.trim();
-      if (!v) { toast('Please paste a key first.'); return; }
-      if (!v.startsWith('sk-ant-')) { toast('That doesn\'t look like an Anthropic key.'); return; }
-      setKey(v);
-      $('apiKeyInput').value = '';
-      toast('Saved.');
-      showScreen('captureScreen');
-    });
-
-    // Settings nav
-    $('settingsBtn').addEventListener('click', () => {
-      $('apiKeyEdit').value = getKey();
-      $('modelSelect').value = getModel();
-      showScreen('settingsScreen');
-    });
-    $('settingsBackBtn').addEventListener('click', () => {
-      showScreen(getKey() ? 'captureScreen' : 'setupScreen');
-    });
-    $('settingsSaveBtn').addEventListener('click', () => {
-      const v = $('apiKeyEdit').value.trim();
-      if (v) setKey(v);
-      setModel($('modelSelect').value);
-      toast('Settings saved.');
-      showScreen(getKey() ? 'captureScreen' : 'setupScreen');
-    });
-    $('clearKeyBtn').addEventListener('click', () => {
-      clearKey();
-      toast('API key removed.');
-      showScreen('setupScreen');
-    });
-
-    // Capture
-    const fileInput = $('fileInput');
-    const previewImg = $('previewImg');
-    const preview = $('preview');
-    const predictBtn = $('predictBtn');
-
-    fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      try {
-        const { base64, mediaType, previewUrl } = await fileToNormalizedJpeg(file);
-        lastImageBase64 = base64;
-        lastImageMediaType = mediaType;
-        previewImg.src = previewUrl;
-        preview.classList.remove('hidden');
-        predictBtn.disabled = false;
-      } catch (err) {
-        toast(err.message || 'Could not load that photo.');
-      } finally {
-        fileInput.value = '';
-      }
-    });
-
-    $('retakeBtn').addEventListener('click', () => {
-      lastImageBase64 = null;
-      preview.classList.add('hidden');
-      predictBtn.disabled = true;
-    });
-
-    predictBtn.addEventListener('click', async () => {
-      if (!lastImageBase64) return;
-      if (!getKey()) { showScreen('setupScreen'); return; }
-      $('loadingText').textContent = 'Reading your cards…';
-      showScreen('loadingScreen');
-      try {
-        const parsed = await identifyCards(lastImageBase64, lastImageMediaType);
-        renderResult(parsed);
-      } catch (err) {
-        toast(err.message || 'Something went wrong.');
-        showScreen('captureScreen');
-      }
-    });
-
-    $('againBtn').addEventListener('click', () => {
-      lastImageBase64 = null;
-      preview.classList.add('hidden');
-      predictBtn.disabled = true;
-      showScreen('captureScreen');
-    });
-  }
-
+  // Start on content load
   document.addEventListener('DOMContentLoaded', init);
 })();
