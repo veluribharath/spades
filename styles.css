@@ -1029,6 +1029,13 @@ footer a:hover {
   cursor: pointer;
   user-select: none;
   transition: padding var(--transition-normal);
+  background: transparent;
+  border: none;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  font-family: inherit;
+  outline: none;
 }
 
 .config-header-title {

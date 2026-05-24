@@ -95,7 +95,9 @@
     const configHeader = $('configHeader');
     if (configHeader) {
       configHeader.addEventListener('click', () => {
-        $('configPanel').classList.toggle('expanded');
+        const panel = $('configPanel');
+        const expanded = panel.classList.toggle('expanded');
+        configHeader.setAttribute('aria-expanded', String(expanded));
       });
     }
 
@@ -103,7 +105,9 @@
     const predictionHeader = $('predictionHeader');
     if (predictionHeader) {
       predictionHeader.addEventListener('click', () => {
-        $('predictionPanel').classList.toggle('expanded');
+        const panel = $('predictionPanel');
+        const expanded = panel.classList.toggle('expanded');
+        predictionHeader.setAttribute('aria-expanded', String(expanded));
       });
     }
 
