@@ -235,7 +235,7 @@
   // Update Game Info text based on decks and players
   function updateSettingsInfo() {
     const totalCards = state.decks * 52;
-    const maxHand = Math.floor(totalCards / state.players);
+    const maxHand = Math.min(13, Math.floor(totalCards / state.players));
     const info = $('settingsInfo');
     if (info) {
       info.textContent = `${state.decks} ${state.decks === 1 ? 'Deck' : 'Decks'} (${totalCards} cards) with ${state.players} players. Maximum hand size is ${maxHand} cards.`;
@@ -455,7 +455,7 @@
         const totalVal = kingCount * valPerKing * (secure ? 1.0 : 0.9);
         tricks += totalVal;
 
-        let reasonStr = `${kingCount}x K${symbol} (${isGuarded ? 'guarded' : 'singleton'}`;
+        let reasonStr = `${kingCount}x K${symbol} (${isGuarded ? 'guarded' : 'unguarded'}`;
         if (players !== 4) {
           reasonStr += `, ${players} players scale: ${valPerKing.toFixed(2)}/each`;
         }
@@ -516,13 +516,11 @@
     }
 
     // --- 4. Micro Hand Size adjustments ---
-    const rawTricks = tricks;
-    
     if (handSize === 1) {
       const allSuits = ['S', 'H', 'D', 'C'];
       let activeCard = null;
       let activeSuit = null;
-      
+
       allSuits.forEach(s => {
         if (state.hand[s].length === 1) {
           activeCard = state.hand[s][0];
@@ -535,19 +533,19 @@
         if (activeSuit === 'S') {
           p = Math.min(1.0, p + 0.15); // Trump bonus
         }
-        
+
         // Opponents count scaling for 1-card round
         // More players = lower odds of winning unless card is Ace
         if (activeCard < 14) {
           p = Math.max(0.05, p - (players - 4) * 0.06);
         }
-        
+
         tricks = p;
-        
+
         reasoning.length = 0; // Reset other reasoning
-        reasoning.push({ 
-          text: `1-card round (${players} players): ${VALUE_TO_RANK[activeCard]}${SUIT_SYMBOLS[activeSuit]} wins ~${Math.round(p * 100)}% of the time.`, 
-          type: 'special-reason' 
+        reasoning.push({
+          text: `1-card round (${players} players): ${VALUE_TO_RANK[activeCard]}${SUIT_SYMBOLS[activeSuit]} wins ~${Math.round(p * 100)}% of the time.`,
+          type: 'special-reason'
         });
       }
     } else if (handSize === 2) {
@@ -556,7 +554,7 @@
 
     // Rounding and Clamping
     let finalPrediction = Math.round(tricks);
-    
+
     // Clamp to maximum hand size or maximum possible tricks
     finalPrediction = Math.max(0, Math.min(handSize, finalPrediction));
 
@@ -568,8 +566,8 @@
       confidence = 'high';
     }
 
-    // Soften confidence if mathematically near the rounding line
-    const fraction = Math.abs(rawTricks - Math.round(rawTricks));
+    // Soften confidence if mathematically near the rounding line (use post-adjustment tricks)
+    const fraction = Math.abs(tricks - Math.round(tricks));
     if (fraction > 0.35 && confidence !== 'low') {
       confidence = confidence === 'high' ? 'med' : 'low';
     }
@@ -605,11 +603,7 @@
     }
 
     numberDiv.textContent = String(p.tricks);
-    if (p.tricks > 0) {
-      circle.classList.add('has-bid');
-    } else {
-      circle.classList.remove('has-bid');
-    }
+    circle.classList.add('has-bid');
 
     // Set confidence classes
     confidence.className = `confidence-pill ${p.confidence}`;
@@ -686,11 +680,11 @@
 
       // Standard Rules Bags Penalty Check (-100pts per 10 bags)
       if (s.rules === 'standard') {
-        if (s.teamABags >= 10) {
+        while (s.teamABags >= 10) {
           s.teamAScore -= 100;
           s.teamABags -= 10;
         }
-        if (s.teamBBags >= 10) {
+        while (s.teamBBags >= 10) {
           s.teamBScore -= 100;
           s.teamBBags -= 10;
         }
@@ -729,19 +723,41 @@
     const bidBInput = $('bidTeamB');
     const actualBInput = $('actualTeamB');
 
-    const bidA = parseInt(bidAInput.value.trim());
-    const actualA = parseInt(actualAInput.value.trim());
-    const bidB = parseInt(bidBInput.value.trim());
-    const actualB = parseInt(actualBInput.value.trim());
+    const rawBidA = bidAInput.value.trim();
+    const rawActualA = actualAInput.value.trim();
+    const rawBidB = bidBInput.value.trim();
+    const rawActualB = actualBInput.value.trim();
+
+    const bidA = Number(rawBidA);
+    const actualA = Number(rawActualA);
+    const bidB = Number(rawBidB);
+    const actualB = Number(rawActualB);
 
     // Validation
-    if (isNaN(bidA) || isNaN(actualA) || isNaN(bidB) || isNaN(actualB)) {
+    if (rawBidA === '' || rawActualA === '' || rawBidB === '' || rawActualB === '') {
       toast('Please fill in bids and tricks won for both teams.');
       return;
     }
 
+    if (!Number.isInteger(bidA) || !Number.isInteger(actualA) ||
+        !Number.isInteger(bidB) || !Number.isInteger(actualB)) {
+      toast('Bids and tricks won must be whole numbers.');
+      return;
+    }
+
     if (bidA < 0 || actualA < 0 || bidB < 0 || actualB < 0) {
-      toast('Toggles / scores cannot be negative.');
+      toast('Bids and scores cannot be negative.');
+      return;
+    }
+
+    const maxTricks = Math.floor(state.decks * 52 / state.players);
+    if (bidA > maxTricks || actualA > maxTricks || bidB > maxTricks || actualB > maxTricks) {
+      toast(`Values cannot exceed max tricks per hand (${maxTricks}).`);
+      return;
+    }
+
+    if (actualA + actualB > state.decks * 13) {
+      toast(`Combined tricks won (${actualA + actualB}) cannot exceed total tricks in play (${state.decks * 13}).`);
       return;
     }
 
@@ -768,18 +784,21 @@
 
   // Handle Scoreboard Reset
   function resetMatch() {
-    if (state.scorekeeper.rounds.length === 0) return;
-    
     if (confirm('Are you sure you want to reset the current match scoreboard?')) {
       const s = state.scorekeeper;
       s.rounds = [];
       s.teamAName = 'Team A';
       s.teamBName = 'Team B';
-      
+
       const inputA = $('teamANameInput');
       const inputB = $('teamBNameInput');
       if (inputA) inputA.value = 'Team A';
       if (inputB) inputB.value = 'Team B';
+
+      $('bidTeamA').value = '';
+      $('actualTeamA').value = '';
+      $('bidTeamB').value = '';
+      $('actualTeamB').value = '';
 
       updateUIWithTeamNames();
       recalculateMatch();
