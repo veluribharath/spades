@@ -15,6 +15,38 @@
       <p>Tap suits below to toggle the cards in your hand</p>
     </header>
 
+    <!-- Game Configuration Settings -->
+    <section class="card-panel">
+      <h2 class="panel-title">Game Configuration</h2>
+      <div class="settings-panel">
+        <div class="settings-row">
+          <span class="settings-label">Number of Decks:</span>
+          <div class="settings-pills" id="deckPills">
+            <button class="settings-pill-btn active" data-decks="1">1 Deck</button>
+            <button class="settings-pill-btn" data-decks="2">2 Decks</button>
+            <button class="settings-pill-btn" data-decks="3">3 Decks</button>
+          </div>
+        </div>
+        
+        <div class="settings-row">
+          <span class="settings-label">Number of Players:</span>
+          <div class="settings-pills" id="playerPills">
+            <button class="settings-pill-btn" data-players="2">2</button>
+            <button class="settings-pill-btn" data-players="3">3</button>
+            <button class="settings-pill-btn active" data-players="4">4</button>
+            <button class="settings-pill-btn" data-players="5">5</button>
+            <button class="settings-pill-btn" data-players="6">6</button>
+            <button class="settings-pill-btn" data-players="7">7</button>
+            <button class="settings-pill-btn" data-players="8">8</button>
+          </div>
+        </div>
+        
+        <div id="settingsInfo" class="settings-info">
+          1 Deck (52 cards) with 4 players. Maximum hand size is 13 cards.
+        </div>
+      </div>
+    </section>
+
     <!-- Card Input Selector Grid -->
     <section class="card-panel selector-section">
       <h2 class="panel-title">Select Suit & Ranks</h2>
@@ -48,19 +80,19 @@
         
         <!-- 13 Card Ranks Grid -->
         <div class="ranks-grid">
-          <button class="rank-pill" data-rank="A">A</button>
-          <button class="rank-pill" data-rank="K">K</button>
-          <button class="rank-pill" data-rank="Q">Q</button>
-          <button class="rank-pill" data-rank="J">J</button>
-          <button class="rank-pill" data-rank="10">10</button>
-          <button class="rank-pill" data-rank="9">9</button>
-          <button class="rank-pill" data-rank="8">8</button>
-          <button class="rank-pill" data-rank="7">7</button>
-          <button class="rank-pill" data-rank="6">6</button>
-          <button class="rank-pill" data-rank="5">5</button>
-          <button class="rank-pill" data-rank="4">4</button>
-          <button class="rank-pill" data-rank="3">3</button>
-          <button class="rank-pill" data-rank="2">2</button>
+          <button class="rank-pill" data-rank="A">A<span class="rank-badge"></span></button>
+          <button class="rank-pill" data-rank="K">K<span class="rank-badge"></span></button>
+          <button class="rank-pill" data-rank="Q">Q<span class="rank-badge"></span></button>
+          <button class="rank-pill" data-rank="J">J<span class="rank-badge"></span></button>
+          <button class="rank-pill" data-rank="10">10<span class="rank-badge"></span></button>
+          <button class="rank-pill" data-rank="9">9<span class="rank-badge"></span></button>
+          <button class="rank-pill" data-rank="8">8<span class="rank-badge"></span></button>
+          <button class="rank-pill" data-rank="7">7<span class="rank-badge"></span></button>
+          <button class="rank-pill" data-rank="6">6<span class="rank-badge"></span></button>
+          <button class="rank-pill" data-rank="5">5<span class="rank-badge"></span></button>
+          <button class="rank-pill" data-rank="4">4<span class="rank-badge"></span></button>
+          <button class="rank-pill" data-rank="3">3<span class="rank-badge"></span></button>
+          <button class="rank-pill" data-rank="2">2<span class="rank-badge"></span></button>
           
           <!-- None / Clear Suit Button (14th Option) -->
           <button id="nonePill" class="rank-pill none-pill">Select None</button>

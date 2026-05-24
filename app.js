@@ -16,12 +16,14 @@
   // Application State
   const state = {
     hand: {
-      S: [], // Spades (array of numerical values)
+      S: [], // Spades (duplicates allowed: e.g. [14, 14, 13])
       H: [], // Hearts
       D: [], // Diamonds
       C: []  // Clubs
     },
-    activeSuit: null // 'S', 'H', 'D', or 'C'
+    activeSuit: null, // 'S', 'H', 'D', or 'C'
+    decks: 1, // Number of decks (1, 2, or 3)
+    players: 4 // Number of players (2 to 8)
   };
 
   // Helper DOM Selector
@@ -29,12 +31,12 @@
 
   // Initialize Event Listeners
   function init() {
-    // Suit Tabs Click Handlers
+    // 1. Suit Tabs Click Handlers
     ['S', 'H', 'D', 'C'].forEach(suit => {
       $(`tab${suit}`).addEventListener('click', () => toggleSuitDrawer(suit));
     });
 
-    // Rank Grid Pill Click Handlers
+    // 2. Rank Grid Pill Click Handlers
     const rankButtons = document.querySelectorAll('.ranks-grid .rank-pill:not(.none-pill)');
     rankButtons.forEach(button => {
       button.addEventListener('click', () => {
@@ -43,10 +45,34 @@
       });
     });
 
-    // "Select None" Button Handler
+    // 3. "Select None" Button Handler
     $('nonePill').addEventListener('click', clearActiveSuit);
 
-    // Initial render to set up default placeholders
+    // 4. Game Configuration: Decks Selectors
+    const deckButtons = document.querySelectorAll('#deckPills .settings-pill-btn');
+    deckButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        deckButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const newDecks = parseInt(btn.getAttribute('data-decks'));
+        changeDecks(newDecks);
+      });
+    });
+
+    // 5. Game Configuration: Players Selectors
+    const playerButtons = document.querySelectorAll('#playerPills .settings-pill-btn');
+    playerButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        playerButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.players = parseInt(btn.getAttribute('data-players'));
+        updateSettingsInfo();
+        renderAll();
+      });
+    });
+
+    // Initial render to set up default placeholders & info labels
+    updateSettingsInfo();
     renderAll();
   }
 
@@ -93,20 +119,55 @@
     return '';
   }
 
-  // Add/Remove a card value to/from the active suit
+  // Handle deck settings change + automatic hand duplicate clamping
+  function changeDecks(newDecks) {
+    state.decks = newDecks;
+    
+    // Auto-clamp any existing card selections in our hand
+    ['S', 'H', 'D', 'C'].forEach(suit => {
+      const cards = state.hand[suit];
+      const counts = {};
+      const clampedCards = [];
+      
+      // Traverse cards in order
+      cards.forEach(val => {
+        counts[val] = (counts[val] || 0) + 1;
+        if (counts[val] <= newDecks) {
+          clampedCards.push(val);
+        }
+      });
+      
+      state.hand[suit] = clampedCards;
+    });
+    
+    updateSettingsInfo();
+    syncRankPills();
+    renderAll();
+  }
+
+  // Update Game Info text based on decks and players
+  function updateSettingsInfo() {
+    const totalCards = state.decks * 52;
+    const maxHand = Math.floor(totalCards / state.players);
+    $('settingsInfo').textContent = `${state.decks} ${state.decks === 1 ? 'Deck' : 'Decks'} (${totalCards} cards) with ${state.players} players. Maximum hand size is ${maxHand} cards.`;
+  }
+
+  // Add/Remove card value supporting multi-deck duplicates
   function toggleCard(rank) {
     if (!state.activeSuit) return;
     
     const suit = state.activeSuit;
     const value = RANK_VALUES[rank];
-    const index = state.hand[suit].indexOf(value);
+    
+    // Count existing copies of this card value in this suit
+    const currentCount = state.hand[suit].filter(v => v === value).length;
 
-    if (index > -1) {
-      // Card exists, so remove it
-      state.hand[suit].splice(index, 1);
-    } else {
-      // Card doesn't exist, so add it
+    if (currentCount < state.decks) {
+      // Add another copy
       state.hand[suit].push(value);
+    } else {
+      // Reached maximum allowed, reset all copies of this card back to 0
+      state.hand[suit] = state.hand[suit].filter(v => v !== value);
     }
 
     // Keep the array sorted descending
@@ -128,7 +189,7 @@
     renderAll();
   }
 
-  // Highlight active rank pills based on state
+  // Highlight active rank pills and overlay counter badges based on state
   function syncRankPills() {
     if (!state.activeSuit) return;
 
@@ -140,10 +201,18 @@
       const rank = button.getAttribute('data-rank');
       const val = RANK_VALUES[rank];
       
-      if (activeValues.includes(val)) {
+      // Calculate how many copies are selected
+      const count = activeValues.filter(v => v === val).length;
+      const badge = button.querySelector('.rank-badge');
+      
+      if (count > 0) {
         button.classList.add('active');
+        badge.textContent = `x${count}`;
+        badge.style.display = 'block';
       } else {
         button.classList.remove('active');
+        badge.textContent = '';
+        badge.style.display = 'none';
       }
     });
   }
@@ -155,7 +224,7 @@
     renderPrediction(prediction);
   }
 
-  // Renders the visual hand dashboard at the top
+  // Renders the visual hand dashboard, showing duplicate cards
   function renderHandSummary() {
     let totalCards = 0;
     const placeholder = $('emptyPlaceholder');
@@ -172,6 +241,7 @@
         row.classList.remove('empty');
         chipContainer.innerHTML = '';
 
+        // Render each card (duplicates will naturally render side-by-side)
         cards.forEach(val => {
           const rank = VALUE_TO_RANK[val];
           const chip = document.createElement('div');
@@ -199,7 +269,7 @@
     }
   }
 
-  // Real-Time Progressive Spades Trick Prediction Engine
+  // Real-Time Heuristic Prediction Engine factoring in Decks and Players
   function calculateTricks() {
     const spades = state.hand.S;
     const hearts = state.hand.H;
@@ -207,6 +277,9 @@
     const clubs = state.hand.C;
 
     const handSize = spades.length + hearts.length + diamonds.length + clubs.length;
+    const players = state.players;
+    const decks = state.decks;
+    
     const reasoning = [];
     let tricks = 0;
 
@@ -214,38 +287,51 @@
       return { tricks: 0, confidence: 'No Bid', reasoning: [], handSize, spadeCount: 0 };
     }
 
-    // --- 1. Spade (Trump) Honors ---
-    if (spades.includes(14)) {
-      tricks += 1.0;
-      reasoning.push({ text: 'A♠ → 1 sure trick (highest trump card).', type: 'trump-reason' });
-    }
-    if (spades.includes(13)) {
-      if (spades.length >= 2) {
-        tricks += 1.0;
-        reasoning.push({ text: 'K♠ is guarded by other spades → 1 likely trick.', type: 'trump-reason' });
-      } else {
-        tricks += 0.6;
-        reasoning.push({ text: 'K♠ singleton → vulnerable to falling under the A♠ (partial credit).', type: 'trump-reason' });
-      }
-    }
-    if (spades.includes(12)) {
-      if (spades.length >= 3) {
-        tricks += 0.7;
-        reasoning.push({ text: 'Q♠ with 2+ guards → highly likely to pull a trick.', type: 'trump-reason' });
-      } else if (spades.length === 2) {
-        tricks += 0.4;
-        reasoning.push({ text: 'Q♠ with only 1 guard → moderate chance of winning.', type: 'trump-reason' });
-      } else {
-        tricks += 0.1;
-        reasoning.push({ text: 'Q♠ singleton → highly likely to get caught.', type: 'trump-reason' });
-      }
-    }
-    if (spades.includes(11) && spades.length >= 4) {
-      tricks += 0.4;
-      reasoning.push({ text: 'J♠ with 3+ guards → strong potential for late-round wins.', type: 'trump-reason' });
+    // Dynamic player count factor (opponents void scaling)
+    // base players: 4. More players = side honors less secure. Fewer = side honors more secure.
+    const playerFactor = (players - 4) * (players > 4 ? -0.04 : -0.02);
+
+    // --- 1. Spade (Trump) Honors Heuristics ---
+    const aceSpadesCount = spades.filter(v => v === 14).length;
+    if (aceSpadesCount > 0) {
+      // In multi-deck, Aces are secure only if you hold all copies
+      const secure = decks - aceSpadesCount === 0;
+      const valPerAce = secure ? 1.0 : 0.95;
+      const totalAceVal = aceSpadesCount * valPerAce;
+      tricks += totalAceVal;
+      reasoning.push({
+        text: `${aceSpadesCount}x A♠ → ${secure ? '100% secure' : 'highly likely'} trick${aceSpadesCount > 1 ? 's' : ''} (${totalAceVal.toFixed(2)} total).`,
+        type: 'trump-reason'
+      });
     }
 
-    // --- 2. Side-Suit Honors ---
+    const kingSpadesCount = spades.filter(v => v === 13).length;
+    if (kingSpadesCount > 0) {
+      // Guarded check: at least 2 spades per King
+      const isGuarded = spades.length >= (2 * kingSpadesCount);
+      const secure = decks - kingSpadesCount === 0;
+      const valPerKing = isGuarded ? (secure ? 1.0 : 0.9) : 0.6;
+      const totalKingVal = kingSpadesCount * valPerKing;
+      tricks += totalKingVal;
+      reasoning.push({
+        text: `${kingSpadesCount}x K♠ → ${isGuarded ? 'guarded' : 'unguarded'} value (${totalKingVal.toFixed(2)} total).`,
+        type: 'trump-reason'
+      });
+    }
+
+    const queenSpadesCount = spades.filter(v => v === 12).length;
+    if (queenSpadesCount > 0) {
+      const isGuarded = spades.length >= (3 * queenSpadesCount);
+      const valPerQueen = isGuarded ? 0.7 : (spades.length >= (2 * queenSpadesCount) ? 0.4 : 0.1);
+      const totalQueenVal = queenSpadesCount * valPerQueen;
+      tricks += totalQueenVal;
+      reasoning.push({
+        text: `${queenSpadesCount}x Q♠ → ${isGuarded ? 'well-guarded' : 'weakly guarded'} value (${totalQueenVal.toFixed(2)} total).`,
+        type: 'trump-reason'
+      });
+    }
+
+    // --- 2. Side-Suit Honors Heuristics ---
     ['H', 'D', 'C'].forEach(s => {
       const suit = state.hand[s];
       const symbol = SUIT_SYMBOLS[s];
@@ -253,35 +339,68 @@
 
       if (suit.length === 0) return;
 
-      if (suit.includes(14)) {
-        tricks += 0.95;
-        reasoning.push({ text: `A${symbol} → almost certain trick in the first round of ${suitName}.`, type: 'side-suit-reason' });
-      }
-      if (suit.includes(13)) {
-        if (suit.length >= 2) {
-          tricks += 0.55;
-          reasoning.push({ text: `K${symbol} guarded → likely trick if the Ace is pulled early.`, type: 'side-suit-reason' });
-        } else {
-          tricks += 0.15;
-          reasoning.push({ text: `K${symbol} singleton → high risk of falling to the Ace.`, type: 'side-suit-reason' });
+      // Side Aces
+      const aceCount = suit.filter(v => v === 14).length;
+      if (aceCount > 0) {
+        const valPerAce = Math.max(0.55, 0.95 + playerFactor);
+        const secure = decks - aceCount === 0;
+        const totalVal = aceCount * valPerAce * (secure ? 1.0 : 0.9);
+        tricks += totalVal;
+        
+        let reasonStr = `${aceCount}x A${symbol}`;
+        if (players !== 4) {
+          reasonStr += ` (${players} players scale: ${valPerAce.toFixed(2)}/each)`;
         }
+        reasonStr += ` → expected trick${aceCount > 1 ? 's' : ''} (${totalVal.toFixed(2)} total).`;
+        
+        reasoning.push({ text: reasonStr, type: 'side-suit-reason' });
       }
-      if (suit.includes(12) && suit.length >= 3) {
-        tricks += 0.25;
-        reasoning.push({ text: `Q${symbol} with 2+ guards → minor value on long rounds.`, type: 'side-suit-reason' });
+
+      // Side Kings
+      const kingCount = suit.filter(v => v === 13).length;
+      if (kingCount > 0) {
+        const isGuarded = suit.length >= (2 * kingCount);
+        const valPerKing = Math.max(0.1, (isGuarded ? 0.55 : 0.15) + playerFactor);
+        const secure = decks - kingCount === 0;
+        const totalVal = kingCount * valPerKing * (secure ? 1.0 : 0.9);
+        tricks += totalVal;
+
+        let reasonStr = `${kingCount}x K${symbol} (${isGuarded ? 'guarded' : 'singleton'}`;
+        if (players !== 4) {
+          reasonStr += `, ${players} players scale: ${valPerKing.toFixed(2)}/each`;
+        }
+        reasonStr += `) → ${totalVal.toFixed(2)} tricks.`;
+        
+        reasoning.push({ text: reasonStr, type: 'side-suit-reason' });
+      }
+
+      // Side Queens
+      const queenCount = suit.filter(v => v === 12).length;
+      if (queenCount > 0) {
+        const isGuarded = suit.length >= (3 * queenCount);
+        const valPerQueen = Math.max(0.05, (isGuarded ? 0.25 : 0.05) + playerFactor / 2);
+        const totalVal = queenCount * valPerQueen;
+        tricks += totalVal;
+        
+        reasoning.push({
+          text: `${queenCount}x Q${symbol} (${isGuarded ? 'guarded' : 'unguarded'}) → value contribution ${totalVal.toFixed(2)}.`,
+          type: 'side-suit-reason'
+        });
       }
     });
 
-    // --- 3. Ruffing Potential (Short Side-Suits + Long Spades) ---
-    // In Progressive Spades, ruffing requires having a reasonable hand size
+    // --- 3. Ruffing Heuristics (Short Side-Suits + Long Spades) ---
     const longSpadeCount = Math.max(0, spades.length - 3);
     if (longSpadeCount > 0 && handSize >= 5) {
-      const ruffValue = Math.min(longSpadeCount, 4) * 0.45;
-      tricks += ruffValue;
-      reasoning.push({ text: `Ruffing potential with ${spades.length} Spades → adding ~${ruffValue.toFixed(1)} tricks.`, type: 'special-reason' });
+      // More players = short suits ruffed faster
+      const ruffScale = Math.min(longSpadeCount, 4) * (0.45 + (players - 4) * 0.02);
+      tricks += ruffScale;
+      reasoning.push({
+        text: `Ruffing potential with ${spades.length} Spades (${players} players scale) → adding ~${ruffScale.toFixed(2)} tricks.`,
+        type: 'special-reason'
+      });
     }
 
-    // Short-suits offer ruffing if we have spades to control
     if (spades.length >= 2 && handSize >= 5) {
       ['H', 'D', 'C'].forEach(s => {
         const len = state.hand[s].length;
@@ -289,20 +408,27 @@
         const symbol = SUIT_SYMBOLS[s];
 
         if (len === 0) {
-          tricks += 0.5;
-          reasoning.push({ text: `Void in ${name} ${symbol} → can trump/ruff on the first round of the suit.`, type: 'special-reason' });
+          const voidVal = 0.5 + (players - 4) * 0.05;
+          tricks += voidVal;
+          reasoning.push({
+            text: `Void in ${name} ${symbol} (${players} players scale) → trump power worth ~${voidVal.toFixed(2)} tricks.`,
+            type: 'special-reason'
+          });
         } else if (len === 1 && !state.hand[s].includes(14)) {
-          tricks += 0.25;
-          reasoning.push({ text: `Singleton in ${name} ${symbol} → rapid entry to ruffing in later rounds.`, type: 'special-reason' });
+          const singVal = 0.25 + (players - 4) * 0.03;
+          tricks += singVal;
+          reasoning.push({
+            text: `Singleton in ${name} ${symbol} (${players} players scale) → rapid entry to ruffing worth ~${singVal.toFixed(2)} tricks.`,
+            type: 'special-reason'
+          });
         }
       });
     }
 
-    // --- 4. Micro Hand adjustments ---
+    // --- 4. Micro Hand Size adjustments ---
     const rawTricks = tricks;
     
     if (handSize === 1) {
-      // 1-card round: Trick odds purely determined by rank weight
       const allSuits = ['S', 'H', 'D', 'C'];
       let activeCard = null;
       let activeSuit = null;
@@ -319,21 +445,29 @@
         if (activeSuit === 'S') {
           p = Math.min(1.0, p + 0.15); // Trump bonus
         }
+        
+        // Opponents count scaling for 1-card round
+        // More players = lower odds of winning unless card is Ace
+        if (activeCard < 14) {
+          p = Math.max(0.05, p - (players - 4) * 0.06);
+        }
+        
         tricks = p;
         
-        reasoning.length = 0; // Clear other calculations
+        reasoning.length = 0; // Reset other reasoning
         reasoning.push({ 
-          text: `1-card round: ${VALUE_TO_RANK[activeCard]}${SUIT_SYMBOLS[activeSuit]} wins approximately ${Math.round(p * 100)}% of the time in standard play.`, 
+          text: `1-card round (${players} players): ${VALUE_TO_RANK[activeCard]}${SUIT_SYMBOLS[activeSuit]} wins ~${Math.round(p * 100)}% of the time.`, 
           type: 'special-reason' 
         });
       }
     } else if (handSize === 2) {
-      // 2-card round: Extremely high variance, dampen predictions slightly
-      tricks = Math.min(tricks, 2.0) * 0.85;
+      tricks = Math.min(tricks, 2.0) * 0.85; // Dampening high variance
     }
 
     // Rounding and Clamping
     let finalPrediction = Math.round(tricks);
+    
+    // Clamp to maximum hand size or maximum possible tricks
     finalPrediction = Math.max(0, Math.min(handSize, finalPrediction));
 
     // Confidence Metrics
@@ -344,7 +478,7 @@
       confidence = 'high';
     }
 
-    // If mathematical raw score is near the boundary, lower confidence slightly
+    // Soften confidence if mathematically near the rounding line
     const fraction = Math.abs(rawTricks - Math.round(rawTricks));
     if (fraction > 0.35 && confidence !== 'low') {
       confidence = confidence === 'high' ? 'med' : 'low';
@@ -380,7 +514,6 @@
       return;
     }
 
-    // Add glowing color highlights if predicted tricks are greater than 0
     numberDiv.textContent = String(p.tricks);
     if (p.tricks > 0) {
       circle.classList.add('has-bid');

@@ -349,6 +349,7 @@ header p {
   justify-content: center;
   align-items: center;
   user-select: none;
+  position: relative;
 }
 
 .rank-pill:hover {
@@ -602,4 +603,97 @@ footer a:hover {
   .prediction-number {
     font-size: 32px;
   }
+}
+
+/* --- New Phase 1 Game Settings Panel & Counter Badge Styles --- */
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.settings-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.settings-pills {
+  display: flex;
+  gap: 6px;
+}
+
+.settings-pill-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.settings-pill-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+}
+
+.settings-info {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+/* Rank pill counter badge positioning */
+.rank-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  display: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.rank-pill.active .rank-badge {
+  display: block;
+}
+
+/* Counter indicator inside Hand chips */
+.card-chip .chip-count {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-left: 2px;
+  font-weight: 800;
 }
