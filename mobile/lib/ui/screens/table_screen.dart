@@ -11,26 +11,13 @@ import '../widgets/hand_fan.dart';
 import '../widgets/scoreboard_bar.dart';
 import '../widgets/trick_area.dart';
 
-class TableScreen extends ConsumerStatefulWidget {
+class TableScreen extends ConsumerWidget {
   const TableScreen({super.key});
 
   @override
-  ConsumerState<TableScreen> createState() => _TableScreenState();
-}
-
-class _TableScreenState extends ConsumerState<TableScreen> {
-  bool _bidSheetOpen = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.watch(gameControllerProvider);
     final match = controller.match;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (controller.isHumanBidTurn && !_bidSheetOpen) {
-        _openBidSheet(controller);
-      }
-    });
 
     return Scaffold(
       body: DecoratedBox(
@@ -80,6 +67,13 @@ class _TableScreenState extends ConsumerState<TableScreen> {
                           e.key: e.value,
                       },
                     ),
+                    if (controller.isHumanBidTurn)
+                      BidPanel(
+                        config: match.config,
+                        isFirstBidOfHand: match.bids.isEmpty,
+                        blindNilEligible: match.config.blindNilEnabled,
+                        onBid: controller.submitHumanBid,
+                      ),
                     if (match.phase == HandPhase.complete)
                       _HandSummaryOverlay(controller: controller),
                   ],
@@ -94,19 +88,6 @@ class _TableScreenState extends ConsumerState<TableScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _openBidSheet(GameController controller) async {
-    setState(() => _bidSheetOpen = true);
-    final bid = await showBidSheet(
-      context,
-      config: controller.match.config,
-      isFirstBidOfHand: controller.match.bids.isEmpty,
-      blindNilEligible: controller.match.config.blindNilEnabled,
-    );
-    if (!mounted) return;
-    setState(() => _bidSheetOpen = false);
-    if (bid != null) controller.submitHumanBid(bid);
   }
 }
 
