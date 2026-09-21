@@ -70,8 +70,11 @@ Let `bid` = sum of the two partners' regular (non-Nil) bids, and
 
 - If `won >= bid`: team scores `10 * bid` **plus 1 point per
   overtrick** (`won - bid`), called a **bag**.
-- If `won < bid`: the team is **"set"** (or "bagged out") and loses
-  `10 * bid` points (negative score for the hand). No partial credit.
+- If `won < bid`: the team is **"set"** (or "bagged out") and scores
+  `-10 * bid + won` — the flat penalty offset by **1 point per trick
+  actually won** (house rule for this app; standard Spades gives no
+  credit at all for a set hand). Example: bid 3, won 2 → `-30 + 2 =
+  -28`.
 
 ### 5.2 Bags / sandbagging penalty
 

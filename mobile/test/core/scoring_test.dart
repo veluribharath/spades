@@ -26,23 +26,41 @@ void main() {
     expect(score.totalDelta, 71);
   });
 
-  test('set contract loses 10 per bid trick with no partial credit', () {
+  test(
+    'set contract loses 10 per bid trick, credited 1 point per trick won',
+    () {
+      final score = computeTeamHandScore(
+        team: Team.southNorth,
+        players: [
+          PlayerHandResult(seat: Seat.south, bid: Bid.regular(5), tricksWon: 2),
+          PlayerHandResult(seat: Seat.north, bid: Bid.regular(3), tricksWon: 4),
+        ],
+        bagCountBefore: 0,
+        config: config,
+      );
+
+      expect(score.teamBid, 8);
+      expect(score.teamTricksWon, 6);
+      expect(score.madeContract, isFalse);
+      expect(score.contractScore, -74); // -10*8 + 6
+      expect(score.bagsEarned, 0);
+      expect(score.totalDelta, -74);
+    },
+  );
+
+  test('set contract with zero tricks won gets no credit', () {
     final score = computeTeamHandScore(
       team: Team.southNorth,
       players: [
-        PlayerHandResult(seat: Seat.south, bid: Bid.regular(5), tricksWon: 2),
-        PlayerHandResult(seat: Seat.north, bid: Bid.regular(3), tricksWon: 4),
+        PlayerHandResult(seat: Seat.south, bid: Bid.regular(2), tricksWon: 0),
+        PlayerHandResult(seat: Seat.north, bid: Bid.regular(1), tricksWon: 0),
       ],
       bagCountBefore: 0,
       config: config,
     );
 
-    expect(score.teamBid, 8);
-    expect(score.teamTricksWon, 6);
-    expect(score.madeContract, isFalse);
-    expect(score.contractScore, -80);
-    expect(score.bagsEarned, 0);
-    expect(score.totalDelta, -80);
+    expect(score.contractScore, -30); // -10*3 + 0
+    expect(score.totalDelta, -30);
   });
 
   test('successful nil adds +100 independent of team contract', () {

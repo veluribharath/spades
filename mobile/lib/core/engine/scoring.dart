@@ -63,7 +63,11 @@ TeamHandScore computeTeamHandScore({
   final teamTricksWon = players.fold<int>(0, (sum, p) => sum + p.tricksWon);
 
   final madeContract = teamTricksWon >= teamBid;
-  final contractScore = madeContract ? 10 * teamBid : -10 * teamBid;
+  // A set contract still credits 1 point per trick the team actually won,
+  // softening the flat -10/bid penalty (house rule requested for this app).
+  final contractScore = madeContract
+      ? 10 * teamBid
+      : -10 * teamBid + teamTricksWon;
   final bagsEarned = madeContract ? teamTricksWon - teamBid : 0;
 
   final nilScore = players.fold<int>(0, (sum, p) {

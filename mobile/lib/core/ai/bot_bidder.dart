@@ -45,10 +45,13 @@ Bid chooseBotBid({
 
   final rounded = estimate.round().clamp(0, hand.length);
 
-  if (rounded == 0 &&
-      config.nilEnabled &&
-      spades.length <= 2 &&
-      !spades.any((c) => c.rank.value >= 12)) {
+  if (rounded != 0 || !config.nilEnabled) {
+    // Nil is off (e.g. Progressive Spades) — a plain 0 is a real, honest
+    // bid here, not something that needs a declared Nil to be legal.
+    return Bid.regular(rounded);
+  }
+
+  if (spades.length <= 2 && !spades.any((c) => c.rank.value >= 12)) {
     final behind = opponentScore - teamScore;
     if (config.blindNilEnabled && isFirstBidOfHand && behind >= 100) {
       return Bid.blindNil();
@@ -56,5 +59,7 @@ Bid chooseBotBid({
     return Bid.nil();
   }
 
-  return Bid.regular(rounded == 0 ? 1 : rounded);
+  // Nil is enabled but this hand isn't a good Nil candidate; bidding a
+  // bare 0 without declaring Nil isn't meaningful, so bid the minimum.
+  return Bid.regular(1);
 }
