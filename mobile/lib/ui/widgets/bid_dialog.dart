@@ -13,12 +13,17 @@ class BidPanel extends StatelessWidget {
   const BidPanel({
     super.key,
     required this.config,
+    required this.maxBid,
     required this.isFirstBidOfHand,
     required this.blindNilEligible,
     required this.onBid,
   });
 
   final MatchConfig config;
+
+  /// The most tricks a bid can claim — the number of cards dealt this
+  /// hand (always 13 outside Progressive Spades; see docs/RULES.md §7).
+  final int maxBid;
   final bool isFirstBidOfHand;
   final bool blindNilEligible;
   final ValueChanged<Bid> onBid;
@@ -44,16 +49,19 @@ class BidPanel extends StatelessWidget {
             ).textTheme.titleMedium?.copyWith(color: AppColors.gold),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Check your hand below before you bid.',
-            style: TextStyle(color: AppColors.cream, fontSize: 12),
+          Text(
+            maxBid == 13
+                ? 'Check your hand below before you bid.'
+                : 'You have $maxBid card${maxBid == 1 ? '' : 's'} this hand '
+                      '— check below before you bid.',
+            style: const TextStyle(color: AppColors.cream, fontSize: 12),
           ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (var i = 1; i <= 13; i++)
+              for (var i = 1; i <= maxBid; i++)
                 _BidChip(label: '$i', onTap: () => onBid(Bid.regular(i))),
             ],
           ),

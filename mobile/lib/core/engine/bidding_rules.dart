@@ -18,7 +18,14 @@ void validateBid(
   required bool isFirstBidOfHand,
   required int biddingTeamScore,
   required int opposingTeamScore,
+  required int handSize,
 }) {
+  if (bid.tricks > handSize) {
+    throw IllegalBidException(
+      'Cannot bid more than the $handSize card(s) dealt this hand.',
+    );
+  }
+
   if (bid.isNil && !config.nilEnabled) {
     throw IllegalBidException('Nil bids are disabled in this match.');
   }

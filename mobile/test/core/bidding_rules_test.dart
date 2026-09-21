@@ -12,6 +12,7 @@ void main() {
         isFirstBidOfHand: true,
         biddingTeamScore: 0,
         opposingTeamScore: 0,
+        handSize: 13,
       ),
       throwsA(isA<IllegalBidException>()),
     );
@@ -25,9 +26,40 @@ void main() {
         isFirstBidOfHand: false,
         biddingTeamScore: 0,
         opposingTeamScore: 0,
+        handSize: 13,
       ),
       returnsNormally,
     );
+  });
+
+  group('hand-size cap', () {
+    test('rejects a bid higher than the cards dealt this hand', () {
+      expect(
+        () => validateBid(
+          Bid.regular(3),
+          config: const MatchConfig(),
+          isFirstBidOfHand: true,
+          biddingTeamScore: 0,
+          opposingTeamScore: 0,
+          handSize: 2,
+        ),
+        throwsA(isA<IllegalBidException>()),
+      );
+    });
+
+    test('allows a bid equal to the cards dealt this hand', () {
+      expect(
+        () => validateBid(
+          Bid.regular(2),
+          config: const MatchConfig(),
+          isFirstBidOfHand: true,
+          biddingTeamScore: 0,
+          opposingTeamScore: 0,
+          handSize: 2,
+        ),
+        returnsNormally,
+      );
+    });
   });
 
   group('blind nil', () {
@@ -41,6 +73,7 @@ void main() {
           isFirstBidOfHand: false,
           biddingTeamScore: 0,
           opposingTeamScore: 200,
+          handSize: 13,
         ),
         throwsA(isA<IllegalBidException>()),
       );
@@ -54,6 +87,7 @@ void main() {
           isFirstBidOfHand: true,
           biddingTeamScore: 50,
           opposingTeamScore: 100,
+          handSize: 13,
         ),
         throwsA(isA<IllegalBidException>()),
       );
@@ -67,6 +101,7 @@ void main() {
           isFirstBidOfHand: true,
           biddingTeamScore: 0,
           opposingTeamScore: 100,
+          handSize: 13,
         ),
         returnsNormally,
       );
@@ -80,6 +115,7 @@ void main() {
           isFirstBidOfHand: true,
           biddingTeamScore: 0,
           opposingTeamScore: 500,
+          handSize: 13,
         ),
         throwsA(isA<IllegalBidException>()),
       );

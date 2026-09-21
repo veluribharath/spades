@@ -11,11 +11,15 @@ class ScoreboardBar extends StatelessWidget {
     required this.teamScores,
     required this.teamBags,
     required this.config,
+    required this.roundNumber,
+    required this.handSize,
   });
 
   final Map<Team, int> teamScores;
   final Map<Team, int> teamBags;
   final MatchConfig config;
+  final int roundNumber;
+  final int handSize;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +35,9 @@ class ScoreboardBar extends StatelessWidget {
           children: [
             _teamTile('You & North', Team.southNorth),
             Text(
-              'to ${config.targetScore}',
+              config.progressiveDealing
+                  ? 'Round $roundNumber/13 · $handSize card${handSize == 1 ? '' : 's'}'
+                  : 'to ${config.targetScore}',
               style: const TextStyle(
                 color: AppColors.gold,
                 fontWeight: FontWeight.w700,

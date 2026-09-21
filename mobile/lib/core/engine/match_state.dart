@@ -34,6 +34,14 @@ class MatchState {
   HandPhase phase = HandPhase.bidding;
   MatchStatus status = MatchStatus.ongoing;
 
+  /// 1-indexed hand counter. Only drives [handSize] when
+  /// [MatchConfig.progressiveDealing] is set; otherwise it's just a count.
+  int roundNumber = 1;
+
+  /// How many cards each player is dealt this hand: always 13 normally,
+  /// or [roundNumber] (1→13) under Progressive Spades (docs/RULES.md §7).
+  int get handSize => config.progressiveDealing ? roundNumber : 13;
+
   final Map<Team, int> teamScores = {Team.southNorth: 0, Team.westEast: 0};
   final Map<Team, int> teamBags = {Team.southNorth: 0, Team.westEast: 0};
   final List<Map<Team, TeamHandScore>> handHistory = [];
@@ -57,7 +65,7 @@ class MatchState {
   bool get biddingComplete => bids.length == Seat.values.length;
 
   void _startNewHand() {
-    hands = dealHand(random: _random);
+    hands = dealHand(cardsPerPlayer: handSize, random: _random);
     bids.clear();
     currentTrick = null;
     completedTricks.clear();
@@ -80,6 +88,7 @@ class MatchState {
       isFirstBidOfHand: isFirst,
       biddingTeamScore: teamScores[seat.team]!,
       opposingTeamScore: teamScores[seat.team.opponent]!,
+      handSize: handSize,
     );
     bids[seat] = bid;
 
@@ -127,7 +136,7 @@ class MatchState {
       tricksWonThisHand[winner] = tricksWonThisHand[winner]! + 1;
       completedTricks.add(trick);
 
-      if (completedTricks.length == 13) {
+      if (completedTricks.length == handSize) {
         _finishHand();
       } else {
         currentTrick = Trick(leader: winner);
@@ -166,6 +175,13 @@ class MatchState {
   }
 
   void _evaluateMatchStatus() {
+    if (config.progressiveDealing) {
+      // Progressive Spades always runs exactly 13 hands (1→13 cards),
+      // per docs/RULES.md §7 — score thresholds don't apply.
+      if (roundNumber >= 13) status = MatchStatus.finished;
+      return;
+    }
+
     final losers = Team.values
         .where((t) => teamScores[t]! <= config.lossFloor)
         .toList();
@@ -204,6 +220,7 @@ class MatchState {
       throw StateError('Match is already finished');
     }
     dealer = dealer.next;
+    roundNumber++;
     _startNewHand();
   }
 }

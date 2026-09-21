@@ -29,7 +29,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Classic partnership spades',
+                  'Progressive: 1 card up to 13',
                   style: TextStyle(color: AppColors.cream),
                 ),
                 const SizedBox(height: 40),

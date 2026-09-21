@@ -9,12 +9,29 @@ class MatchConfig {
     this.bostonBonusEnabled = false,
     this.bagPenaltyEvery = 10,
     this.bagPenaltyAmount = 100,
+    this.progressiveDealing = false,
   });
 
+  /// Progressive Spades per docs/RULES.md §7: hand size grows from 1 card
+  /// to 13 over exactly 13 hands (instead of always dealing 13), with no
+  /// Nil and no bag penalty.
+  const MatchConfig.progressive()
+    : targetScore = 500,
+      lossFloor = -200,
+      nilEnabled = false,
+      blindNilEnabled = false,
+      bostonBonusEnabled = false,
+      bagPenaltyEvery = 10,
+      bagPenaltyAmount = 0,
+      progressiveDealing = true;
+
   /// First hand-end where a team's score reaches this ends the match.
+  /// Ignored when [progressiveDealing] is true — that variant always runs
+  /// exactly 13 hands regardless of score.
   final int targetScore;
 
-  /// A team whose score falls to or below this loses instantly.
+  /// A team whose score falls to or below this loses instantly. Ignored
+  /// when [progressiveDealing] is true.
   final int lossFloor;
 
   final bool nilEnabled;
@@ -33,4 +50,8 @@ class MatchConfig {
 
   /// Points lost each time the bag penalty triggers (default -100).
   final int bagPenaltyAmount;
+
+  /// When true, hand size ramps 1→13 across the match instead of always
+  /// dealing 13 cards per player (docs/RULES.md §7 "Progressive Spades").
+  final bool progressiveDealing;
 }

@@ -31,6 +31,8 @@ class TableScreen extends ConsumerWidget {
                   teamScores: match.teamScores,
                   teamBags: match.teamBags,
                   config: match.config,
+                  roundNumber: match.roundNumber,
+                  handSize: match.handSize,
                 ),
               ),
               Expanded(
@@ -71,6 +73,7 @@ class TableScreen extends ConsumerWidget {
                     if (controller.isHumanBidTurn)
                       BidPanel(
                         config: match.config,
+                        maxBid: match.handSize,
                         isFirstBidOfHand: match.bids.isEmpty,
                         blindNilEligible: match.config.blindNilEnabled,
                         onBid: controller.submitHumanBid,

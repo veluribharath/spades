@@ -147,7 +147,10 @@ class GameController extends ChangeNotifier {
   }
 }
 
+/// The app currently launches straight into Progressive Spades (hand
+/// size 1→13, per docs/RULES.md §7) — there's no mode-select screen yet
+/// (see docs/PLAN.md milestone 7 for a future Classic/variant toggle).
 final gameControllerProvider =
     ChangeNotifierProvider.autoDispose<GameController>((ref) {
-      return GameController();
+      return GameController(config: const MatchConfig.progressive());
     });

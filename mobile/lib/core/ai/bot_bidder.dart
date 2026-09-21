@@ -43,7 +43,7 @@ Bid chooseBotBid({
     }
   }
 
-  final rounded = estimate.round().clamp(0, 13);
+  final rounded = estimate.round().clamp(0, hand.length);
 
   if (rounded == 0 &&
       config.nilEnabled &&
