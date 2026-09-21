@@ -61,7 +61,9 @@ class BidPanel extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (var i = 1; i <= maxBid; i++)
+              // A plain 0 bid is only offered when Nil is off — otherwise
+              // "Nil" below is the (bonus-carrying) way to bid zero tricks.
+              for (var i = config.nilEnabled ? 1 : 0; i <= maxBid; i++)
                 _BidChip(label: '$i', onTap: () => onBid(Bid.regular(i))),
             ],
           ),
@@ -95,7 +97,7 @@ class BidPanel extends StatelessWidget {
   }
 }
 
-class _BidChip extends StatelessWidget {
+class _BidChip extends StatefulWidget {
   const _BidChip({
     required this.label,
     required this.onTap,
@@ -109,24 +111,71 @@ class _BidChip extends StatelessWidget {
   final bool enabled;
 
   @override
+  State<_BidChip> createState() => _BidChipState();
+}
+
+class _BidChipState extends State<_BidChip> {
+  bool _hovering = false;
+
+  @override
   Widget build(BuildContext context) {
+    final baseColor = widget.accent ? AppColors.gold : AppColors.feltLight;
+    final hoverColor = widget.accent
+        ? Color.lerp(AppColors.gold, Colors.white, 0.15)!
+        : AppColors.feltLight.withValues(alpha: 0.7);
+    final active = widget.enabled && _hovering;
+
     return Opacity(
-      opacity: enabled ? 1 : 0.4,
-      child: Material(
-        color: accent ? AppColors.gold : AppColors.feltLight,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: enabled ? onTap : null,
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                color: accent ? AppColors.spadeInk : AppColors.cream,
+      opacity: widget.enabled ? 1 : 0.4,
+      child: MouseRegion(
+        cursor: widget.enabled
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
+        onEnter: (_) => setState(() => _hovering = true),
+        onExit: (_) => setState(() => _hovering = false),
+        child: AnimatedScale(
+          scale: active ? 1.08 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: active
+                  ? [
+                      BoxShadow(
+                        color: AppColors.gold.withValues(alpha: 0.45),
+                        blurRadius: 12,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : const [],
+            ),
+            child: Material(
+              color: active ? hoverColor : baseColor,
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                onTap: widget.enabled ? widget.onTap : null,
+                borderRadius: BorderRadius.circular(14),
+                hoverColor: Colors.transparent,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  child: Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: widget.accent
+                          ? AppColors.spadeInk
+                          : AppColors.cream,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
           ),
         ),
