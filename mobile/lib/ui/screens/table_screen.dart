@@ -8,6 +8,7 @@ import '../../state/game_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bid_dialog.dart';
 import '../widgets/hand_fan.dart';
+import '../widgets/score_history_dialog.dart';
 import '../widgets/scoreboard_bar.dart';
 import '../widgets/trick_area.dart';
 
@@ -27,12 +28,21 @@ class TableScreen extends ConsumerWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: ScoreboardBar(
-                  teamScores: match.teamScores,
-                  teamBags: match.teamBags,
-                  config: match.config,
-                  roundNumber: match.roundNumber,
-                  handSize: match.handSize,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: ScoreboardBar(
+                        teamScores: match.teamScores,
+                        teamBags: match.teamBags,
+                        config: match.config,
+                        roundNumber: match.roundNumber,
+                        handSize: match.handSize,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ScoreHistoryButton(match: match),
+                  ],
                 ),
               ),
               Expanded(
