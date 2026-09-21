@@ -63,7 +63,8 @@ class TableScreen extends ConsumerWidget {
                     ),
                     TrickArea(
                       plays: {
-                        for (final e in (match.currentTrick?.plays ?? const []))
+                        for (final e
+                            in (controller.visibleTrick?.plays ?? const []))
                           e.key: e.value,
                       },
                     ),
