@@ -18,6 +18,7 @@ void _playOutHand(MatchState match) {
       isFirstBidOfHand: match.bids.isEmpty,
       teamScore: match.teamScores[seat.team]!,
       opponentScore: match.teamScores[seat.team.opponent]!,
+      maxBid: match.maxBidFor(seat),
     );
     match.submitBid(bid);
   }
@@ -68,6 +69,7 @@ void main() {
           isFirstBidOfHand: match.bids.isEmpty,
           teamScore: 0,
           opponentScore: 0,
+          maxBid: match.maxBidFor(match.nextBidder),
         ),
       );
     }

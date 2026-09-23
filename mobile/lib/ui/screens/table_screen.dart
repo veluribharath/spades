@@ -83,7 +83,8 @@ class TableScreen extends ConsumerWidget {
                     if (controller.isHumanBidTurn)
                       BidPanel(
                         config: match.config,
-                        maxBid: match.handSize,
+                        handSize: match.handSize,
+                        maxBid: match.maxBidFor(kHumanSeat),
                         isFirstBidOfHand: match.bids.isEmpty,
                         blindNilEligible: match.config.blindNilEnabled,
                         onBid: controller.submitHumanBid,

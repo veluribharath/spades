@@ -12,7 +12,9 @@ Bid chooseBotBid({
   required bool isFirstBidOfHand,
   required int teamScore,
   required int opponentScore,
+  int? maxBid,
 }) {
+  final cap = maxBid ?? hand.length;
   final spades = hand.where((c) => c.suit == Suit.spades).toList();
 
   double estimate = 0;
@@ -43,7 +45,7 @@ Bid chooseBotBid({
     }
   }
 
-  final rounded = estimate.round().clamp(0, hand.length);
+  final rounded = estimate.round().clamp(0, cap);
 
   if (rounded != 0 || !config.nilEnabled) {
     // Nil is off (e.g. Progressive Spades) — a plain 0 is a real, honest
@@ -60,6 +62,7 @@ Bid chooseBotBid({
   }
 
   // Nil is enabled but this hand isn't a good Nil candidate; bidding a
-  // bare 0 without declaring Nil isn't meaningful, so bid the minimum.
-  return Bid.regular(1);
+  // bare 0 without declaring Nil isn't meaningful, so bid the minimum —
+  // unless the partner has already claimed every trick in the hand.
+  return Bid.regular(cap >= 1 ? 1 : 0);
 }

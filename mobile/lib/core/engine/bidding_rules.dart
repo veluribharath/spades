@@ -19,10 +19,17 @@ void validateBid(
   required int biddingTeamScore,
   required int opposingTeamScore,
   required int handSize,
+  int partnerTricks = 0,
 }) {
   if (bid.tricks > handSize) {
     throw IllegalBidException(
       'Cannot bid more than the $handSize card(s) dealt this hand.',
+    );
+  }
+  if (bid.tricks + partnerTricks > handSize) {
+    throw IllegalBidException(
+      'Your partnership cannot bid more than the $handSize trick(s) '
+      'in this hand (partner already bid $partnerTricks).',
     );
   }
 

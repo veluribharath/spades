@@ -64,6 +64,12 @@ class MatchState {
 
   bool get biddingComplete => bids.length == Seat.values.length;
 
+  int _partnerTricks(Seat seat) => bids[seat.partner]?.teamTricks ?? 0;
+
+  /// The highest bid [seat] may make: a partnership's combined bid can't
+  /// exceed the tricks available this hand.
+  int maxBidFor(Seat seat) => handSize - _partnerTricks(seat);
+
   void _startNewHand() {
     hands = dealHand(cardsPerPlayer: handSize, random: _random);
     bids.clear();
@@ -89,6 +95,7 @@ class MatchState {
       biddingTeamScore: teamScores[seat.team]!,
       opposingTeamScore: teamScores[seat.team.opponent]!,
       handSize: handSize,
+      partnerTricks: _partnerTricks(seat),
     );
     bids[seat] = bid;
 

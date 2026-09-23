@@ -25,6 +25,7 @@ void main() {
             isFirstBidOfHand: controller.match.bids.isEmpty,
             teamScore: 0,
             opponentScore: 0,
+            maxBid: controller.match.maxBidFor(kHumanSeat),
           ),
         );
       } else {

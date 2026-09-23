@@ -31,7 +31,8 @@ each player bids the number of tricks (0–13) they think **they
 personally** will win this hand, based only on their own hand — bids
 are simultaneous-feeling but sequential and are locked once spoken.
 
-- **Regular bid**: any integer 0–13.
+- **Regular bid**: any integer from 0 up to the number of cards dealt
+  that hand (13 normally; fewer in Progressive Spades, §7).
 - **Nil**: a bid of exactly 0, declaring the player believes they will
   win **zero tricks**. High risk/reward — see scoring in §5.
 - **Blind Nil** (optional variant, off by default): a player may bid
@@ -40,7 +41,9 @@ are simultaneous-feeling but sequential and are locked once spoken.
     is at least 100 points behind.
 - A partnership's **team bid** is the sum of its two members' bids
   (a Nil bid contributes 0 to the team's trick target but is scored
-  separately — see §5).
+  separately — see §5). The team bid can never exceed the number of
+  tricks in the hand (= cards per player), so the second partner to bid
+  is capped at whatever the first partner left.
 - There is no bidding "double nil" — each player bids independently.
 
 ## 4. Play

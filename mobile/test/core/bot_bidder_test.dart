@@ -36,5 +36,24 @@ void main() {
 
       expect(bid.isNil, isTrue);
     });
+
+    test('never bids above maxBid even with a strong hand', () {
+      const strongHand = [
+        PlayingCard(Suit.spades, Rank.ace),
+        PlayingCard(Suit.spades, Rank.king),
+        PlayingCard(Suit.spades, Rank.queen),
+        PlayingCard(Suit.hearts, Rank.ace),
+      ];
+      final bid = chooseBotBid(
+        hand: strongHand,
+        config: const MatchConfig.progressive(),
+        isFirstBidOfHand: false,
+        teamScore: 0,
+        opponentScore: 0,
+        maxBid: 1,
+      );
+
+      expect(bid.tricks, lessThanOrEqualTo(1));
+    });
   });
 }

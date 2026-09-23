@@ -20,6 +20,7 @@ void _playOutHand(MatchState match) {
       isFirstBidOfHand: match.bids.isEmpty,
       teamScore: match.teamScores[seat.team]!,
       opponentScore: match.teamScores[seat.team.opponent]!,
+      maxBid: match.maxBidFor(seat),
     );
     match.submitBid(bid);
   }
@@ -84,6 +85,28 @@ void main() {
     expect(() => match.submitBid(Bid.regular(1)), returnsNormally);
   });
 
+  test('partners cannot together bid more tricks than the hand holds', () {
+    final match = MatchState(
+      config: const MatchConfig.progressive(),
+      random: Random(9),
+      firstDealer: Seat.south,
+    );
+    expect(match.handSize, 1);
+
+    final first = match.nextBidder;
+    match.submitBid(Bid.regular(1));
+    while (match.nextBidder != first.partner) {
+      match.submitBid(Bid.regular(0));
+    }
+
+    expect(match.maxBidFor(first.partner), 0);
+    expect(
+      () => match.submitBid(Bid.regular(1)),
+      throwsA(isA<IllegalBidException>()),
+    );
+    expect(() => match.submitBid(Bid.regular(0)), returnsNormally);
+  });
+
   test('progressive bots never propose an over-hand-size bid', () {
     final match = MatchState(
       config: const MatchConfig.progressive(),
@@ -100,8 +123,9 @@ void main() {
           isFirstBidOfHand: match.bids.isEmpty,
           teamScore: match.teamScores[seat.team]!,
           opponentScore: match.teamScores[seat.team.opponent]!,
+          maxBid: match.maxBidFor(seat),
         );
-        expect(bid.tricks, lessThanOrEqualTo(match.handSize));
+        expect(bid.tricks, lessThanOrEqualTo(match.maxBidFor(seat)));
         match.submitBid(bid);
       }
       _playOutHand(match);

@@ -100,6 +100,7 @@ class GameController extends ChangeNotifier {
       isFirstBidOfHand: match.bids.isEmpty,
       teamScore: match.teamScores[seat.team]!,
       opponentScore: match.teamScores[seat.team.opponent]!,
+      maxBid: match.maxBidFor(seat),
     );
     match.submitBid(bid);
     notifyListeners();

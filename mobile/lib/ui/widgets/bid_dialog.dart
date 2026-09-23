@@ -13,6 +13,7 @@ class BidPanel extends StatelessWidget {
   const BidPanel({
     super.key,
     required this.config,
+    required this.handSize,
     required this.maxBid,
     required this.isFirstBidOfHand,
     required this.blindNilEligible,
@@ -21,8 +22,13 @@ class BidPanel extends StatelessWidget {
 
   final MatchConfig config;
 
-  /// The most tricks a bid can claim — the number of cards dealt this
-  /// hand (always 13 outside Progressive Spades; see docs/RULES.md §7).
+  /// Cards dealt to each player this hand (always 13 outside Progressive
+  /// Spades; see docs/RULES.md §7).
+  final int handSize;
+
+  /// The most tricks this bid can claim: [handSize] minus whatever the
+  /// partner already bid, since a partnership can't bid more tricks than
+  /// the hand contains.
   final int maxBid;
   final bool isFirstBidOfHand;
   final bool blindNilEligible;
@@ -50,12 +56,20 @@ class BidPanel extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            maxBid == 13
+            handSize == 13
                 ? 'Check your hand below before you bid.'
-                : 'You have $maxBid card${maxBid == 1 ? '' : 's'} this hand '
-                      '— check below before you bid.',
+                : 'You have $handSize card${handSize == 1 ? '' : 's'} this '
+                      'hand — check below before you bid.',
             style: const TextStyle(color: AppColors.cream, fontSize: 12),
           ),
+          if (maxBid < handSize) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Your partner bid ${handSize - maxBid}, so you can bid up to '
+              '$maxBid.',
+              style: const TextStyle(color: AppColors.gold, fontSize: 12),
+            ),
+          ],
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
