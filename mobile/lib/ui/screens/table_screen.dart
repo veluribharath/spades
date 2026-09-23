@@ -85,6 +85,7 @@ class TableScreen extends ConsumerWidget {
                         config: match.config,
                         handSize: match.handSize,
                         maxBid: match.maxBidFor(kHumanSeat),
+                        partnerBid: match.bids[kHumanSeat.partner],
                         isFirstBidOfHand: match.bids.isEmpty,
                         blindNilEligible: match.config.blindNilEnabled,
                         onBid: controller.submitHumanBid,

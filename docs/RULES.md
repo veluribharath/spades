@@ -30,6 +30,13 @@ Starting with the player to the dealer's left and continuing clockwise,
 each player bids the number of tricks (0–13) they think **they
 personally** will win this hand, based only on their own hand — bids
 are simultaneous-feeling but sequential and are locked once spoken.
+The first bidder therefore rotates clockwise each hand along with the
+dealer.
+
+**House rule (this app):** the human player always bids *after* their
+partner (North), so they have the final say on the team's total. If
+the clockwise order would put the human before North, the two swap
+bidding slots for that hand; West and East keep their normal slots.
 
 - **Regular bid**: any integer from 0 up to the number of cards dealt
   that hand (13 normally; fewer in Progressive Spades, §7).

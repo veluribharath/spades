@@ -30,7 +30,11 @@ const _trickSweepDelay = Duration(milliseconds: 900);
 /// in Flutter's [ChangeNotifier] + timing concerns, not game rules.
 class GameController extends ChangeNotifier {
   GameController({MatchConfig config = const MatchConfig(), Random? random})
-    : match = MatchState(config: config, random: random) {
+    : match = MatchState(
+        config: config,
+        random: random,
+        finalSaySeat: kHumanSeat,
+      ) {
     _scheduleBotsIfNeeded();
   }
 

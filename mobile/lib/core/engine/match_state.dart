@@ -20,15 +20,23 @@ enum MatchStatus { ongoing, suddenDeath, finished }
 /// Flutter dependency so it can be unit-tested and driven headlessly by
 /// bots or a UI layer alike.
 class MatchState {
-  MatchState({MatchConfig? config, Random? random, Seat? firstDealer})
-    : config = config ?? const MatchConfig(),
-      _random = random ?? Random(),
-      dealer = firstDealer ?? Seat.values[Random().nextInt(4)] {
+  MatchState({
+    MatchConfig? config,
+    Random? random,
+    Seat? firstDealer,
+    this.finalSaySeat,
+  }) : config = config ?? const MatchConfig(),
+       _random = random ?? Random(),
+       dealer = firstDealer ?? Seat.values[Random().nextInt(4)] {
     _startNewHand();
   }
 
   final MatchConfig config;
   final Random _random;
+
+  /// If set, this seat always bids after its partner so it decides its
+  /// team's final total (house rule for the human player, docs/RULES.md §3).
+  final Seat? finalSaySeat;
 
   Seat dealer;
   HandPhase phase = HandPhase.bidding;
@@ -55,7 +63,26 @@ class MatchState {
 
   Seat get firstBidder => dealer.next;
 
-  Seat get nextBidder => Seat.values.firstWhere(
+  /// Clockwise from the dealer's left, except that [finalSaySeat] swaps
+  /// places with its partner whenever it would otherwise bid first.
+  List<Seat> get biddingOrder {
+    final order = [
+      for (var i = 0; i < Seat.values.length; i++)
+        Seat.values[(firstBidder.index + i) % Seat.values.length],
+    ];
+    final captain = finalSaySeat;
+    if (captain != null) {
+      final mine = order.indexOf(captain);
+      final partners = order.indexOf(captain.partner);
+      if (mine < partners) {
+        order[mine] = captain.partner;
+        order[partners] = captain;
+      }
+    }
+    return order;
+  }
+
+  Seat get nextBidder => biddingOrder.firstWhere(
     (s) => !bids.containsKey(s),
     orElse: () {
       throw StateError('Bidding already complete');

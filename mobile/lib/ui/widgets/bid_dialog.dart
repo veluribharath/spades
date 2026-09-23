@@ -15,6 +15,7 @@ class BidPanel extends StatelessWidget {
     required this.config,
     required this.handSize,
     required this.maxBid,
+    this.partnerBid,
     required this.isFirstBidOfHand,
     required this.blindNilEligible,
     required this.onBid,
@@ -30,6 +31,9 @@ class BidPanel extends StatelessWidget {
   /// partner already bid, since a partnership can't bid more tricks than
   /// the hand contains.
   final int maxBid;
+
+  /// The partner's bid, if they've already bid this hand.
+  final Bid? partnerBid;
   final bool isFirstBidOfHand;
   final bool blindNilEligible;
   final ValueChanged<Bid> onBid;
@@ -62,11 +66,11 @@ class BidPanel extends StatelessWidget {
                       'hand — check below before you bid.',
             style: const TextStyle(color: AppColors.cream, fontSize: 12),
           ),
-          if (maxBid < handSize) ...[
+          if (partnerBid case final partner?) ...[
             const SizedBox(height: 2),
             Text(
-              'Your partner bid ${handSize - maxBid}, so you can bid up to '
-              '$maxBid.',
+              'North bid $partner — your bid sets the team total '
+              '(${partner.teamTricks} + yours, up to $handSize).',
               style: const TextStyle(color: AppColors.gold, fontSize: 12),
             ),
           ],
