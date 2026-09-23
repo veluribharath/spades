@@ -1,17 +1,21 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/models/card.dart';
-import '../../core/models/suit.dart';
 import '../theme/app_theme.dart';
+import 'suit_glyph.dart';
 
 /// Standard card aspect ratio (poker-card proportions).
 const double kCardAspectRatio = 2.5 / 3.5;
 
-/// Renders one playing card as crisp vector art — no bitmap assets, so it
-/// stays pixel-perfect at any size and carries no licensing risk (see
-/// docs/PLAN.md §2). Draws either the face (rank/suit pips) or a
-/// patterned back, and reacts to [highlighted] (legal-to-play) and
-/// [dimmed] (illegal-right-now) states.
+/// One playing card as crisp vector art — no bitmap assets, so it stays
+/// pixel-perfect at any size (see docs/PLAN.md §2).
+///
+/// Faces follow the design language: ivory stock, a Cormorant rank index
+/// in the corners and a single large pip in the middle. States:
+/// [highlighted] (playable now: lifted with a brass ring), [dimmed] (not
+/// playable: 36% opacity) and [winning] (currently taking the trick).
 class PlayingCardWidget extends StatelessWidget {
   const PlayingCardWidget({
     super.key,
@@ -20,6 +24,7 @@ class PlayingCardWidget extends StatelessWidget {
     this.width = 72,
     this.highlighted = false,
     this.dimmed = false,
+    this.winning = false,
   });
 
   final PlayingCard? card;
@@ -27,175 +32,121 @@ class PlayingCardWidget extends StatelessWidget {
   final double width;
   final bool highlighted;
   final bool dimmed;
+  final bool winning;
 
   @override
   Widget build(BuildContext context) {
     final height = width / kCardAspectRatio;
+    final radius = BorderRadius.circular(width * 0.12);
+    final ringed = highlighted || winning;
+    final small = width < 48;
 
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 150),
-      opacity: dimmed ? 0.45 : 1.0,
+      duration: AppMotion.quick,
+      opacity: dimmed ? 0.36 : 1.0,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: AppMotion.quick,
+        curve: Curves.easeOut,
         width: width,
         height: height,
+        transform: Matrix4.translationValues(0, highlighted ? -14 : 0, 0),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(width * 0.11),
+          borderRadius: radius,
           boxShadow: [
+            if (ringed)
+              const BoxShadow(color: AppColors.brass, spreadRadius: 2),
             BoxShadow(
-              color: Colors.black.withValues(alpha: highlighted ? 0.45 : 0.3),
-              blurRadius: highlighted ? 14 : 6,
-              offset: Offset(0, highlighted ? 8 : 3),
+              color: Colors.black.withValues(alpha: highlighted ? 0.48 : 0.4),
+              blurRadius: small ? 8 : (highlighted ? 28 : 18),
+              offset: Offset(0, small ? 3 : (highlighted ? 16 : 8)),
             ),
-            if (highlighted)
-              BoxShadow(
-                color: AppColors.seatHighlight.withValues(alpha: 0.8),
-                blurRadius: 0,
-                spreadRadius: 2,
-              ),
           ],
         ),
-        transform: highlighted
-            ? (Matrix4.identity()..translateByDouble(0.0, -10.0, 0.0, 1.0))
-            : Matrix4.identity(),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(width * 0.11),
-          child: CustomPaint(
-            size: Size(width, height),
-            painter: faceUp && card != null
-                ? _CardFacePainter(card!)
-                : const _CardBackPainter(),
-          ),
+          borderRadius: radius,
+          child: faceUp && card != null
+              ? _CardFace(card: card!, width: width)
+              : _CardBack(width: width),
         ),
       ),
     );
   }
 }
 
-class _CardFacePainter extends CustomPainter {
-  const _CardFacePainter(this.card);
+class _CardFace extends StatelessWidget {
+  const _CardFace({required this.card, required this.width});
+
   final PlayingCard card;
+  final double width;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final rrect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(size.width * 0.11),
-    );
-    canvas.drawRRect(rrect, Paint()..color = AppColors.cream);
-    canvas.drawRRect(
-      rrect.deflate(0.75),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..color = Colors.black.withValues(alpha: 0.12),
-    );
-
-    final color = card.suit.isRed ? AppColors.heartRed : AppColors.spadeInk;
-    final cornerStyle = TextStyle(
-      color: color,
-      fontWeight: FontWeight.w800,
-      fontSize: size.width * 0.24,
-      height: 1.0,
+  Widget build(BuildContext context) {
+    final color = card.suit.isRed ? AppColors.garnet : AppColors.ink;
+    final corner = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          card.rank.label,
+          textScaler: TextScaler.noScaling,
+          style: AppText.display(
+            size: width * 0.31,
+            weight: FontWeight.w700,
+            color: color,
+            height: 0.95,
+          ),
+        ),
+        SizedBox(height: width * 0.02),
+        SuitGlyph(suit: card.suit, size: width * 0.19, color: color),
+      ],
     );
 
-    void paintCorner(Offset offset, {bool flip = false}) {
-      final span = TextSpan(
+    return ColoredBox(
+      color: AppColors.ivory,
+      child: Stack(
         children: [
-          TextSpan(text: '${card.rank.label}\n', style: cornerStyle),
-          TextSpan(
-            text: card.suit.symbol,
-            style: cornerStyle.copyWith(fontSize: size.width * 0.2),
+          Positioned(left: width * 0.09, top: width * 0.07, child: corner),
+          Positioned(
+            right: width * 0.09,
+            bottom: width * 0.07,
+            child: Transform.rotate(angle: math.pi, child: corner),
+          ),
+          Center(
+            child: SuitGlyph(suit: card.suit, size: width * 0.46, color: color),
           ),
         ],
-      );
-      final tp = TextPainter(
-        text: span,
-        textAlign: TextAlign.center,
-        textDirection: TextDirection.ltr,
-      )..layout();
-
-      canvas.save();
-      canvas.translate(offset.dx, offset.dy);
-      if (flip) canvas.rotate(3.14159265);
-      tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
-      canvas.restore();
-    }
-
-    paintCorner(Offset(size.width * 0.17, size.height * 0.15));
-    paintCorner(Offset(size.width * 0.83, size.height * 0.85), flip: true);
-
-    final centerSpan = TextSpan(
-      text: card.suit.symbol,
-      style: TextStyle(
-        color: color.withValues(alpha: 0.9),
-        fontSize: size.width * 0.52,
-        fontWeight: FontWeight.w700,
-      ),
-    );
-    final centerPainter = TextPainter(
-      text: centerSpan,
-      textDirection: TextDirection.ltr,
-    )..layout();
-    centerPainter.paint(
-      canvas,
-      Offset(
-        (size.width - centerPainter.width) / 2,
-        (size.height - centerPainter.height) / 2,
       ),
     );
   }
-
-  @override
-  bool shouldRepaint(covariant _CardFacePainter oldDelegate) =>
-      oldDelegate.card != card;
 }
 
-class _CardBackPainter extends CustomPainter {
-  const _CardBackPainter();
+class _CardBack extends StatelessWidget {
+  const _CardBack({required this.width});
+
+  final double width;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final rrect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(size.width * 0.11),
-    );
-    canvas.drawRRect(
-      rrect,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.feltLight, AppColors.feltDark],
-        ).createShader(Offset.zero & size),
-    );
-
-    final border = RRect.fromRectAndRadius(
-      (Offset.zero & size).deflate(size.width * 0.08),
-      Radius.circular(size.width * 0.08),
-    );
-    canvas.drawRRect(
-      border,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = size.width * 0.03
-        ..color = AppColors.gold.withValues(alpha: 0.85),
-    );
-
-    final spadeStyle = TextStyle(
-      color: AppColors.gold.withValues(alpha: 0.9),
-      fontSize: size.width * 0.34,
-    );
-    final tp = TextPainter(
-      text: TextSpan(text: Suit.spades.symbol, style: spadeStyle),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(
-      canvas,
-      Offset((size.width - tp.width) / 2, (size.height - tp.height) / 2),
+  Widget build(BuildContext context) {
+    final inset = width * 0.08;
+    return ColoredBox(
+      color: AppColors.feltRaised,
+      child: Padding(
+        padding: EdgeInsets.all(inset),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(width * 0.06),
+            border: Border.all(
+              color: AppColors.brass.withValues(alpha: 0.45),
+              width: math.max(0.75, width * 0.015),
+            ),
+          ),
+          child: Center(
+            child: SpadeMonogram(
+              size: width * 0.52,
+              ringWidth: math.max(0.6, width * 0.012),
+            ),
+          ),
+        ),
+      ),
     );
   }
-
-  @override
-  bool shouldRepaint(covariant _CardBackPainter oldDelegate) => false;
 }

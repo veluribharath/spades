@@ -9,7 +9,7 @@ import '../theme/app_theme.dart';
 /// Rendered as an overlay above the trick area (not a modal bottom sheet)
 /// so the player's own hand stays visible at the bottom of the screen
 /// the whole time they're deciding a bid.
-class BidPanel extends StatelessWidget {
+class BidPanel extends StatefulWidget {
   const BidPanel({
     super.key,
     required this.config,
@@ -39,93 +39,148 @@ class BidPanel extends StatelessWidget {
   final ValueChanged<Bid> onBid;
 
   @override
+  State<BidPanel> createState() => _BidPanelState();
+}
+
+class _BidPanelState extends State<BidPanel> {
+  /// The chip under the pointer, previewed in the team total.
+  int? _preview;
+
+  @override
   Widget build(BuildContext context) {
+    final partner = widget.partnerBid;
+    final cards = widget.handSize;
+    final cardsLabel = '$cards card${cards == 1 ? '' : 's'}';
+
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      constraints: const BoxConstraints(maxWidth: 420),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.gold, width: 1.5),
+        color: AppColors.felt.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.brass.withValues(alpha: 0.45)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 48,
+            offset: const Offset(0, 24),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Make your bid',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: AppColors.gold),
+          Text('Your bid', style: AppText.display(size: 30)),
+          const SizedBox(height: 8),
+          Text.rich(
+            partner == null
+                ? TextSpan(
+                    text:
+                        'You hold $cardsLabel. Bid the tricks you expect '
+                        'to take — check your hand below.',
+                  )
+                : TextSpan(
+                    children: [
+                      const TextSpan(text: 'North bid '),
+                      TextSpan(
+                        text: '$partner',
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      TextSpan(
+                        text:
+                            '. You set the team total — up to $cards '
+                            'trick${cards == 1 ? '' : 's'} this hand.',
+                      ),
+                    ],
+                  ),
+            style: AppText.ui(size: 14, color: AppColors.sage, height: 1.5),
           ),
-          const SizedBox(height: 4),
-          Text(
-            handSize == 13
-                ? 'Check your hand below before you bid.'
-                : 'You have $handSize card${handSize == 1 ? '' : 's'} this '
-                      'hand — check below before you bid.',
-            style: const TextStyle(color: AppColors.cream, fontSize: 12),
-          ),
-          if (partnerBid case final partner?) ...[
-            const SizedBox(height: 2),
-            Text(
-              'North bid $partner — your bid sets the team total '
-              '(${partner.teamTricks} + yours, up to $handSize).',
-              style: const TextStyle(color: AppColors.gold, fontSize: 12),
-            ),
-          ],
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               // A plain 0 bid is only offered when Nil is off — otherwise
               // "Nil" below is the (bonus-carrying) way to bid zero tricks.
-              for (var i = config.nilEnabled ? 1 : 0; i <= maxBid; i++)
-                _BidChip(label: '$i', onTap: () => onBid(Bid.regular(i))),
+              for (var i = widget.config.nilEnabled ? 1 : 0; i <= cards; i++)
+                _BidChip(
+                  label: '$i',
+                  enabled: i <= widget.maxBid,
+                  onHover: (hovering) =>
+                      setState(() => _preview = hovering ? i : null),
+                  onTap: () => widget.onBid(Bid.regular(i)),
+                ),
             ],
           ),
+          if (widget.config.nilEnabled || widget.config.blindNilEnabled) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (widget.config.nilEnabled)
+                  Expanded(
+                    child: _NilButton(
+                      label: 'Nil',
+                      onTap: () => widget.onBid(Bid.nil()),
+                    ),
+                  ),
+                if (widget.config.nilEnabled && widget.config.blindNilEnabled)
+                  const SizedBox(width: 10),
+                if (widget.config.blindNilEnabled)
+                  Expanded(
+                    child: _NilButton(
+                      label: 'Blind Nil',
+                      onTap: widget.isFirstBidOfHand && widget.blindNilEligible
+                          ? () => widget.onBid(Bid.blindNil())
+                          : null,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 18),
+          const Divider(height: 1, color: AppColors.hairline),
           const SizedBox(height: 14),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              if (config.nilEnabled)
-                Expanded(
-                  child: _BidChip(
-                    label: 'Nil',
-                    accent: true,
-                    onTap: () => onBid(Bid.nil()),
-                  ),
-                ),
-              if (config.nilEnabled && config.blindNilEnabled)
-                const SizedBox(width: 10),
-              if (config.blindNilEnabled)
-                Expanded(
-                  child: _BidChip(
-                    label: 'Blind Nil',
-                    accent: true,
-                    enabled: isFirstBidOfHand && blindNilEligible,
-                    onTap: () => onBid(Bid.blindNil()),
-                  ),
-                ),
+              Text('TEAM TOTAL', style: AppText.label()),
+              Text(
+                _teamTotal(partner),
+                style: AppText.display(size: 26, color: AppColors.brass),
+              ),
             ],
           ),
         ],
       ),
     );
   }
+
+  String _teamTotal(Bid? partner) {
+    final preview = _preview;
+    if (partner == null) return preview == null ? '—' : '$preview';
+    final p = partner.teamTricks;
+    return preview == null ? '$p + ?' : '$p + $preview = ${p + preview}';
+  }
 }
 
+/// A number chip: raised felt at rest, brass hairline and halo on hover,
+/// a faint dashed-looking ghost when the bid would exceed the hand.
 class _BidChip extends StatefulWidget {
   const _BidChip({
     required this.label,
     required this.onTap,
-    this.accent = false,
+    required this.onHover,
     this.enabled = true,
   });
 
   final String label;
   final VoidCallback onTap;
-  final bool accent;
+  final ValueChanged<bool> onHover;
   final bool enabled;
 
   @override
@@ -135,69 +190,88 @@ class _BidChip extends StatefulWidget {
 class _BidChipState extends State<_BidChip> {
   bool _hovering = false;
 
+  void _setHover(bool value) {
+    if (!widget.enabled || _hovering == value) return;
+    setState(() => _hovering = value);
+    widget.onHover(value);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final baseColor = widget.accent ? AppColors.gold : AppColors.feltLight;
-    final hoverColor = widget.accent
-        ? Color.lerp(AppColors.gold, Colors.white, 0.15)!
-        : AppColors.feltLight.withValues(alpha: 0.7);
-    final active = widget.enabled && _hovering;
+    final enabled = widget.enabled;
+    final active = enabled && _hovering;
+    final radius = BorderRadius.circular(14);
 
-    return Opacity(
-      opacity: widget.enabled ? 1 : 0.4,
-      child: MouseRegion(
-        cursor: widget.enabled
-            ? SystemMouseCursors.click
-            : SystemMouseCursors.basic,
-        onEnter: (_) => setState(() => _hovering = true),
-        onExit: (_) => setState(() => _hovering = false),
-        child: AnimatedScale(
-          scale: active ? 1.08 : 1.0,
-          duration: const Duration(milliseconds: 120),
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => _setHover(true),
+      onExit: (_) => _setHover(false),
+      child: GestureDetector(
+        onTap: enabled ? widget.onTap : null,
+        onTapDown: enabled ? (_) => _setHover(true) : null,
+        onTapCancel: () => _setHover(false),
+        child: AnimatedContainer(
+          duration: AppMotion.quick,
           curve: Curves.easeOut,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: active
-                  ? [
-                      BoxShadow(
-                        color: AppColors.gold.withValues(alpha: 0.45),
-                        blurRadius: 12,
-                        spreadRadius: 1,
-                      ),
-                    ]
-                  : const [],
+          width: 48,
+          height: 52,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: !enabled
+                ? Colors.transparent
+                : active
+                ? AppColors.feltHover
+                : AppColors.feltRaised,
+            borderRadius: radius,
+            border: Border.all(
+              color: active
+                  ? AppColors.brass
+                  : enabled
+                  ? const Color(0x24ECE4D2)
+                  : AppColors.hairline,
             ),
-            child: Material(
-              color: active ? hoverColor : baseColor,
-              borderRadius: BorderRadius.circular(14),
-              child: InkWell(
-                onTap: widget.enabled ? widget.onTap : null,
-                borderRadius: BorderRadius.circular(14),
-                hoverColor: Colors.transparent,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  child: Text(
-                    widget.label,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: widget.accent
-                          ? AppColors.spadeInk
-                          : AppColors.cream,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.brass.withValues(alpha: active ? 0.14 : 0),
+                spreadRadius: 4,
               ),
+            ],
+          ),
+          child: Text(
+            widget.label,
+            textScaler: TextScaler.noScaling,
+            style: AppText.display(
+              size: 24,
+              color: !enabled
+                  ? AppColors.text.withValues(alpha: 0.3)
+                  : active
+                  ? AppColors.ivory
+                  : AppColors.text,
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _NilButton extends StatelessWidget {
+  const _NilButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.brass,
+        side: BorderSide(
+          color: AppColors.brass.withValues(alpha: onTap == null ? 0.25 : 0.7),
+        ),
+      ),
+      child: Text(label),
     );
   }
 }

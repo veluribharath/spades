@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../widgets/suit_glyph.dart';
 import 'table_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -13,36 +14,49 @@ class HomeScreen extends StatelessWidget {
         decoration: feltTableDecoration(),
         child: SafeArea(
           child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  '♠',
-                  style: TextStyle(fontSize: 96, color: AppColors.gold),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+                child: Column(
+                  children: [
+                    const Spacer(flex: 3),
+                    const SpadeMonogram(size: 112),
+                    const SizedBox(height: 28),
+                    Text('Spades', style: AppText.display(size: 64)),
+                    const SizedBox(height: 12),
+                    Text(
+                      'One card to thirteen',
+                      style: AppText.display(
+                        size: 20,
+                        weight: FontWeight.w500,
+                        color: AppColors.sage,
+                        style: FontStyle.italic,
+                      ),
+                    ),
+                    const Spacer(flex: 4),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const TableScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text('New game'),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'YOU & NORTH  ·  VS  ·  WEST & EAST',
+                      style: AppText.label(),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Spades',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Progressive: 1 card up to 13',
-                  style: TextStyle(color: AppColors.cream),
-                ),
-                const SizedBox(height: 40),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const TableScreen()),
-                    );
-                  },
-                  child: const Text('New game'),
-                ),
-              ],
+              ),
             ),
           ),
         ),

@@ -69,20 +69,31 @@ where correctness bugs are cheapest to catch.
 
 ## 4. Visual design direction
 
-- Table: deep emerald felt radial gradient + subtle vignette, matching
-  the premium look of modern digital card-table apps.
-- Cards: rounded-rect vector faces, drop shadow that grows on lift/drag,
-  suit-colored pips (black spades/clubs, red hearts/diamonds), a
-  distinct patterned back design; a spade-motif is the app's own
-  identity, not a copy of any third-party app's art.
-- Motion: dealt cards fly from a virtual deck position to each seat
-  with staggered timing + slight rotation settle; playing a card lifts
-  and arcs it to the trick center; a won trick "sweeps" to the winner's
-  score area; bidding/score changes use light scale/opacity pop-ins.
+"Quiet table, bright cards" — minimal, rich, elegant. The full design
+language (palette, type, components, key screens) lives on the
+"Spades Design Language" canvas; `mobile/lib/ui/theme/app_theme.dart`
+holds the tokens.
+
+- Palette: near-black felt `#0B1F19` with a whisper of vignette
+  (`#13302A` raised), ivory cards `#F4EEE2`, text `#ECE4D2`, sage
+  `#9DAA9F` for secondary text. Garnet `#A23B2E` and ink `#1C1B19` are
+  the only pip colors; `#D98A7E` marks negative scores.
+- One accent: brass `#C9A45C` only ever means "you can act now" — the
+  "Your turn" pill, playable cards' ring, the bid you're about to
+  place, the primary button. At most one solid brass element per screen.
+- Type: Cormorant Garamond (600/700) for display, scores and card
+  indices; Instrument Sans for UI; labels 11px, 600, +0.2em, caps.
+- Cards: vector faces (no font glyphs) with a Cormorant rank index in
+  the corners and one large center pip; backs are raised felt with a
+  brass hairline and the spade monogram. Playable = lifted 14 + brass
+  ring; not playable = 36% opacity; card winning the trick = brass ring.
+- Motion: 180ms for lift/hover, 320ms card flight to the trick, 900ms
+  hold on a completed trick before it clears; played cards settle at a
+  small seat-specific tilt.
+- Layout: human seat always at the bottom; North shows a small stack of
+  card backs, West/East are seat tags only so nothing crowds the trick.
 - Haptics + subtle sound cues on deal/play/trick-win (mobile only,
-  toggleable).
-- Human seat always at the bottom of the screen; bots' hands are shown
-  face-down and fanned, sized down.
+  toggleable) — not yet implemented.
 
 ## 5. Milestones
 

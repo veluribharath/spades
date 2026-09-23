@@ -16,7 +16,7 @@ class HandFan extends StatelessWidget {
     this.cardWidth = 72,
     this.legalCards,
     this.onCardTap,
-    this.maxSpreadAngle = 0.5,
+    this.maxSpreadAngle = 0.35,
   });
 
   final List<PlayingCard> cards;
@@ -32,34 +32,43 @@ class HandFan extends StatelessWidget {
 
     final cardHeight = cardWidth / kCardAspectRatio;
     final count = cards.length;
-    final angleStep = count > 1 ? (maxSpreadAngle * 2) / (count - 1) : 0.0;
-    final overlap = cardWidth * 0.62;
+    // Small hands fan gently; the arc opens up as the hand grows.
+    final spread = math.min(maxSpreadAngle, 0.04 * (count - 1));
+    final angleStep = count > 1 ? (spread * 2) / (count - 1) : 0.0;
+    final overlap = cardWidth * (count <= 5 ? 0.72 : 0.6);
     final totalWidth = cardWidth + overlap * (count - 1);
 
     return SizedBox(
-      width: totalWidth + cardWidth,
-      height: cardHeight + 28,
+      width: totalWidth,
+      height: cardHeight + 36,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.bottomCenter,
         children: [
-          for (var i = 0; i < count; i++) _buildCard(i, angleStep, overlap),
+          for (var i = 0; i < count; i++)
+            _buildCard(i, spread, angleStep, overlap),
         ],
       ),
     );
   }
 
-  Widget _buildCard(int index, double angleStep, double overlap) {
+  Widget _buildCard(
+    int index,
+    double spread,
+    double angleStep,
+    double overlap,
+  ) {
     final count = cards.length;
-    final angle = count > 1 ? -maxSpreadAngle + angleStep * index : 0.0;
+    final angle = count > 1 ? -spread + angleStep * index : 0.0;
     final card = cards[index];
     final isLegal = legalCards == null || legalCards!.contains(card);
 
-    final lift = math.cos(angle) * 10 - 10;
+    // Outer cards drop along the arc, as if held in one hand.
+    final drop = (1 - math.cos(angle)) * cardWidth * 4;
 
     return Positioned(
       left: overlap * index,
-      bottom: -lift,
+      bottom: 14 - drop,
       child: Transform.rotate(
         angle: angle,
         alignment: Alignment.bottomCenter,

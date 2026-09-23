@@ -4,7 +4,8 @@ import '../../core/models/match_config.dart';
 import '../../core/models/seat.dart';
 import '../theme/app_theme.dart';
 
-/// Compact HUD bar showing both teams' running score and bag count.
+/// The table HUD: each partnership's score at the edges, the round in
+/// brass in the middle. No panel behind it — the numbers sit on the felt.
 class ScoreboardBar extends StatelessWidget {
   const ScoreboardBar({
     super.key,
@@ -13,6 +14,7 @@ class ScoreboardBar extends StatelessWidget {
     required this.config,
     required this.roundNumber,
     required this.handSize,
+    this.trailing,
   });
 
   final Map<Team, int> teamScores;
@@ -21,60 +23,93 @@ class ScoreboardBar extends StatelessWidget {
   final int roundNumber;
   final int handSize;
 
+  /// Optional widget after the right-hand score (the scoreboard button).
+  final Widget? trailing;
+
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _teamTile('You & North', Team.southNorth),
-            Text(
-              config.progressiveDealing
-                  ? 'Round $roundNumber/13 · $handSize card${handSize == 1 ? '' : 's'}'
-                  : 'to ${config.targetScore}',
-              style: const TextStyle(
-                color: AppColors.gold,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-              ),
+    final subtitle = config.progressiveDealing
+        ? '$handSize card${handSize == 1 ? '' : 's'} · of 13'
+        : 'to ${config.targetScore}';
+
+    return SizedBox(
+      height: 56,
+      child: Row(
+        children: [
+          Expanded(
+            child: _TeamScore(
+              label: 'You & North',
+              score: teamScores[Team.southNorth]!,
+              alignEnd: false,
             ),
-            _teamTile('West & East', Team.westEast),
-          ],
-        ),
+          ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Round $roundNumber',
+                style: AppText.display(size: 18, color: AppColors.brass),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: AppText.ui(size: 11, color: AppColors.sage),
+              ),
+            ],
+          ),
+          Expanded(
+            child: _TeamScore(
+              label: 'West & East',
+              score: teamScores[Team.westEast]!,
+              alignEnd: true,
+            ),
+          ),
+          if (trailing != null) ...[const SizedBox(width: 10), trailing!],
+        ],
       ),
     );
   }
+}
 
-  Widget _teamTile(String label, Team team) {
+class _TeamScore extends StatelessWidget {
+  const _TeamScore({
+    required this.label,
+    required this.score,
+    required this.alignEnd,
+  });
+
+  final String label;
+  final int score;
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: AppColors.cream),
+          label.toUpperCase(),
+          maxLines: 1,
+          overflow: TextOverflow.fade,
+          softWrap: false,
+          style: AppText.label(size: 10),
         ),
-        Text(
-          '${teamScores[team]}',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: AppColors.cream,
-          ),
-        ),
-        Text(
-          'bags ${teamBags[team]}',
-          style: TextStyle(
-            fontSize: 10,
-            color: AppColors.cream.withValues(alpha: 0.7),
-          ),
-        ),
+        const SizedBox(height: 4),
+        Text(formatScore(score), style: AppText.display(size: 28)),
       ],
     );
   }
 }
+
+/// Scores use a true minus sign so negatives line up with the serif digits.
+String formatScore(int value) => value < 0 ? '−${-value}' : '$value';
+
+/// Deltas always carry a sign: +31, −19, 0.
+String formatDelta(int value) => value > 0
+    ? '+$value'
+    : value < 0
+    ? '−${-value}'
+    : '0';
