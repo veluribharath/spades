@@ -35,10 +35,22 @@ sealed class ClientMessage {
 
   Map<String, Object?> toJson();
 
-  String encode() => jsonEncode(toJson());
+  /// [seq] lets a client match this action to the [RoomSnapshot.ack]
+  /// that confirms the server has processed it.
+  String encode({int? seq}) =>
+      jsonEncode({...toJson(), if (seq != null) 'seq': seq});
 
-  static ClientMessage decode(String raw) {
+  static ClientMessage decode(String raw) => decodeWithSeq(raw).$1;
+
+  /// Decodes a client message and its optional sequence number.
+  static (ClientMessage, int?) decodeWithSeq(String raw) {
     final m = _decodeObject(raw);
+    final seq = m['seq'];
+    if (seq != null && seq is! int) throw DecodeException('Bad seq');
+    return (_decodeBody(m), seq as int?);
+  }
+
+  static ClientMessage _decodeBody(Map<String, Object?> m) {
     return switch (_type(m)) {
       'create' => CreateRoom(
         name: readString(m, 'name'),
@@ -241,9 +253,15 @@ class RoomSnapshot extends ServerMessage {
     required this.started,
     required this.seats,
     this.view,
+    this.ack = 0,
   });
 
   final String code;
+
+  /// The highest `seq` the server had processed from this client when it
+  /// sent this snapshot. A client that just acted should wait for an ack
+  /// of that action before acting again, or it may act on a stale view.
+  final int ack;
   final bool youAreHost;
   final bool started;
 
@@ -261,6 +279,7 @@ class RoomSnapshot extends ServerMessage {
     'started': started,
     'seats': [for (final s in seats) s.toJson()],
     'view': view?.toJson(),
+    'ack': ack,
   };
 
   factory RoomSnapshot.fromJson(Map<String, Object?> m) {
@@ -277,6 +296,7 @@ class RoomSnapshot extends ServerMessage {
       started: readBool(m, 'started'),
       seats: seats,
       view: m['view'] == null ? null : TableView.fromJson(m['view']),
+      ack: m['ack'] is int ? m['ack'] as int : 0,
     );
   }
 }

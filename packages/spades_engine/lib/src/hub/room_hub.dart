@@ -78,6 +78,10 @@ class HubPeer {
   _Room? _room;
   _Member? _member;
 
+  /// Last sequence number received on this connection (echoed back as
+  /// [RoomSnapshot.ack]).
+  int _lastSeq = 0;
+
   static final _clientIdPattern = RegExp(r'^[A-Za-z0-9_-]{8,64}$');
 
   void receive(String raw) {
@@ -86,12 +90,14 @@ class HubPeer {
       return;
     }
     final ClientMessage message;
+    final int? seq;
     try {
-      message = ClientMessage.decode(raw);
+      (message, seq) = ClientMessage.decodeWithSeq(raw);
     } on DecodeException {
       _error("Couldn't understand that message.");
       return;
     }
+    if (seq != null) _lastSeq = seq;
 
     switch (message) {
       case CreateRoom(:final name, :final clientId, :final version):
@@ -451,6 +457,7 @@ class _Room {
         started: s != null,
         seats: [for (final seat in Seat.values) _lobbySeat(seat, member)],
         view: s != null && seat != null ? s.viewFor(seat) : null,
+        ack: member.peer?._lastSeq ?? 0,
       ),
     );
   }
