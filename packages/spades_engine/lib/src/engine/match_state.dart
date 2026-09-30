@@ -24,8 +24,9 @@ class MatchState {
     MatchConfig? config,
     Random? random,
     Seat? firstDealer,
-    this.finalSaySeat,
-  }) : config = config ?? const MatchConfig(),
+    Set<Seat> finalSaySeats = const {},
+  }) : finalSaySeats = Set.unmodifiable(finalSaySeats),
+       config = config ?? const MatchConfig(),
        _random = random ?? Random(),
        dealer = firstDealer ?? Seat.values[Random().nextInt(4)] {
     _startNewHand();
@@ -34,9 +35,10 @@ class MatchState {
   final MatchConfig config;
   final Random _random;
 
-  /// If set, this seat always bids after its partner so it decides its
-  /// team's final total (house rule for the human player, docs/RULES.md §3).
-  final Seat? finalSaySeat;
+  /// Seats that always bid after their partner so they decide their
+  /// team's final total (house rule for a human whose partner is a bot,
+  /// docs/RULES.md §3). At most one seat per team is honored.
+  final Set<Seat> finalSaySeats;
 
   Seat dealer;
   HandPhase phase = HandPhase.bidding;
@@ -63,15 +65,20 @@ class MatchState {
 
   Seat get firstBidder => dealer.next;
 
-  /// Clockwise from the dealer's left, except that [finalSaySeat] swaps
-  /// places with its partner whenever it would otherwise bid first.
+  /// Clockwise from the dealer's left, except that each seat in
+  /// [finalSaySeats] swaps places with its partner whenever it would
+  /// otherwise bid first. Partners always sit two apart in the order, so
+  /// the two teams' swaps never interfere.
   List<Seat> get biddingOrder {
     final order = [
       for (var i = 0; i < Seat.values.length; i++)
         Seat.values[(firstBidder.index + i) % Seat.values.length],
     ];
-    final captain = finalSaySeat;
-    if (captain != null) {
+    for (final team in Team.values) {
+      final captain = team.seats.where(finalSaySeats.contains).firstOrNull;
+      if (captain == null || finalSaySeats.contains(captain.partner)) {
+        continue;
+      }
       final mine = order.indexOf(captain);
       final partners = order.indexOf(captain.partner);
       if (mine < partners) {

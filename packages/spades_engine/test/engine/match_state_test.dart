@@ -139,7 +139,7 @@ void biddingOrderTests() {
           config: const MatchConfig(nilEnabled: false),
           random: Random(1),
           firstDealer: dealer,
-          finalSaySeat: Seat.south,
+          finalSaySeats: {Seat.south},
         );
         final seen = <Seat>[];
         _bidRemaining(match, seen);
@@ -151,6 +151,37 @@ void biddingOrderTests() {
         );
         expect(seen.first, isNot(Seat.south), reason: 'dealer $dealer');
       }
+    });
+
+    test('each team can have its own final-say seat', () {
+      for (final dealer in Seat.values) {
+        final match = MatchState(
+          config: const MatchConfig(nilEnabled: false),
+          random: Random(2),
+          firstDealer: dealer,
+          finalSaySeats: {Seat.south, Seat.east},
+        );
+        final seen = <Seat>[];
+        _bidRemaining(match, seen);
+        expect(seen.toSet(), Seat.values.toSet(), reason: 'dealer $dealer');
+        expect(seen.indexOf(Seat.north), lessThan(seen.indexOf(Seat.south)));
+        expect(seen.indexOf(Seat.west), lessThan(seen.indexOf(Seat.east)));
+      }
+    });
+
+    test('two final-say partners cancel out to plain clockwise order', () {
+      final match = MatchState(
+        config: const MatchConfig(nilEnabled: false),
+        random: Random(3),
+        firstDealer: Seat.east,
+        finalSaySeats: {Seat.south, Seat.north},
+      );
+      expect(match.biddingOrder, [
+        Seat.south,
+        Seat.west,
+        Seat.north,
+        Seat.east,
+      ]);
     });
   });
 }
