@@ -71,6 +71,15 @@ class SpadesServer {
     _sockets.add(socket);
     final peer = hub.connect(_SocketConnection(socket));
     _log?.call('connected ${remote ?? '?'} (${_sockets.length} open)');
+    var gone = false;
+    void cleanUp() {
+      if (gone) return;
+      gone = true;
+      _sockets.remove(socket);
+      peer.closed();
+      _log?.call('disconnected ${remote ?? '?'} (${_sockets.length} open)');
+    }
+
     socket.listen(
       (data) {
         if (data is String) {
@@ -80,18 +89,21 @@ class SpadesServer {
           peer.receive(utf8.decode(data, allowMalformed: true));
         }
       },
-      onDone: () {
-        _sockets.remove(socket);
-        peer.closed();
-        _log?.call('disconnected ${remote ?? '?'} (${_sockets.length} open)');
+      onDone: cleanUp,
+      // A reset connection surfaces as an error, not always a clean close;
+      // either way the hub must learn the player is gone.
+      onError: (Object e) {
+        _log?.call('socket error: $e');
+        cleanUp();
+        unawaited(socket.close());
       },
-      onError: (Object e) => _log?.call('socket error: $e'),
       cancelOnError: true,
     );
   }
 
-  Future<void> close() async {
-    hub.dispose();
+  /// Stops serving. Players still connected are told [reason].
+  Future<void> close({String reason = 'The game server shut down.'}) async {
+    hub.dispose(reason: reason);
     for (final s in _sockets.toList()) {
       await s.close(WebSocketStatus.goingAway);
     }

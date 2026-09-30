@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:spades_engine/io_server.dart';
@@ -9,6 +10,16 @@ import 'package:spades_engine/io_server.dart';
 /// The port can also come from the PORT environment variable (most
 /// hosting platforms set it).
 Future<void> main(List<String> args) async {
+  // One misbehaving room must never take the whole server down.
+  await runZonedGuarded(
+    () => _run(args),
+    (error, stack) => stderr.writeln(
+      '${DateTime.now().toIso8601String()} uncaught: $error\n$stack',
+    ),
+  );
+}
+
+Future<void> _run(List<String> args) async {
   String? option(String name) {
     final i = args.indexOf('--$name');
     return i >= 0 && i + 1 < args.length ? args[i + 1] : null;
@@ -40,7 +51,7 @@ Future<void> main(List<String> args) async {
     try {
       signal.watch().listen((_) async {
         log('shutting down');
-        await server.close();
+        await server.close(reason: 'The game server is restarting.');
         exit(0);
       });
     } on SignalException {

@@ -57,10 +57,26 @@ class _RoomScreenState extends State<RoomScreen> {
   }
 
   void _changed() {
-    final code = _client.room?.code;
+    final room = _client.room;
+    final code = room?.code;
     if (code != null && code != _reportedCode) {
       _reportedCode = code;
       widget.onRoomCode?.call(code);
+    }
+    // Once the table is up, TableScreen shows errors itself.
+    if (!(room?.started ?? false) && mounted) {
+      final error = _client.takeError();
+      if (error != null) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(error, style: AppText.ui(size: 14)),
+              backgroundColor: AppColors.feltRaised,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+      }
     }
     if (mounted) setState(() {});
   }

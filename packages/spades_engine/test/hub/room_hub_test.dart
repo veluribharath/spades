@@ -327,4 +327,48 @@ void main() {
       hub.dispose();
     });
   });
+
+  test('closing the hub tells connected players, fatally', () {
+    fakeAsync((async) {
+      final hub = _hub();
+      final alice = FakeClient(hub, 'alice-0001')..create();
+      final bob = FakeClient(hub, 'bob-00001')..join(alice.room.code);
+      hub.dispose(reason: 'The host closed the room.');
+      for (final c in [alice, bob]) {
+        expect(c.lastError?.message, 'The host closed the room.');
+        expect(c.lastError?.fatal, isTrue);
+        expect(c.isClosed, isTrue);
+      }
+      expect(hub.roomCount, 0);
+    });
+  });
+
+  test('a reconnect sends each player exactly one snapshot', () {
+    fakeAsync((async) {
+      final hub = _hub();
+      final alice = FakeClient(hub, 'alice-0001')..create();
+      final code = alice.room.code;
+      final bob = FakeClient(hub, 'bob-00001')..join(code);
+      alice.say(const StartGame());
+      async.elapse(const Duration(milliseconds: 10));
+      bob.peer.closed();
+      async.elapse(const Duration(seconds: 25));
+      final before = alice.received.length;
+      final bobAgain = FakeClient(hub, 'bob-00001')..join(code);
+      expect(alice.received.length - before, 1);
+      expect(bobAgain.received, hasLength(1));
+      hub.dispose();
+    });
+  });
+
+  test('long names are cut without splitting an emoji', () {
+    fakeAsync((async) {
+      final hub = _hub();
+      final a = FakeClient(hub, 'aaaaaaaa-1', name: '${'a' * 19}😀😀')
+        ..create();
+      final name = a.room.seats[Seat.south.index].name!;
+      expect(name, '${'a' * 19}😀');
+      hub.dispose();
+    });
+  });
 }

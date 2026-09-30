@@ -48,5 +48,13 @@ void main() {
       displayAddress(parseServerAddress('wss://spades.example.com')!),
       'wss://spades.example.com',
     );
+    expect(
+      displayAddress(parseServerAddress('wss://example.com/spades')!),
+      'wss://example.com/spades',
+    );
+    expect(
+      parseServerAddress(displayAddress(parseServerAddress('h:9/x')!)),
+      parseServerAddress('h:9/x'),
+    );
   });
 }

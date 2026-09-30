@@ -296,16 +296,21 @@ class GameSession {
     if (_disposed || match.phase != HandPhase.bidding) return;
     final seat = match.nextBidder;
     if (!isBotControlled(seat)) return;
-    match.submitBid(
-      chooseBotBid(
-        hand: match.hands[seat]!,
-        config: match.config,
-        isFirstBidOfHand: match.bids.isEmpty,
-        teamScore: match.teamScores[seat.team]!,
-        opponentScore: match.teamScores[seat.team.opponent]!,
-        maxBid: match.maxBidFor(seat),
-      ),
+    final choice = chooseBotBid(
+      hand: match.hands[seat]!,
+      config: match.config,
+      isFirstBidOfHand: match.bids.isEmpty,
+      teamScore: match.teamScores[seat.team]!,
+      opponentScore: match.teamScores[seat.team.opponent]!,
+      maxBid: match.maxBidFor(seat),
     );
+    try {
+      match.submitBid(choice);
+    } on IllegalBidException {
+      // Never let a bot's misjudgment stall (or, on a server, crash) the
+      // table: a plain 0 is always legal.
+      match.submitBid(Bid.regular(0));
+    }
     _changed();
     _schedule();
   }
@@ -315,15 +320,14 @@ class GameSession {
     final trick = match.currentTrick!;
     final seat = trick.nextToPlay;
     if (!isBotControlled(seat)) return;
-    _playCard(
-      seat,
-      chooseBotCard(
-        seat: seat,
-        hand: match.hands[seat]!,
-        trick: trick,
-        spadesBroken: match.spadesBroken,
-      ),
+    final choice = chooseBotCard(
+      seat: seat,
+      hand: match.hands[seat]!,
+      trick: trick,
+      spadesBroken: match.spadesBroken,
     );
+    final legal = match.legalPlaysFor(seat);
+    _playCard(seat, legal.contains(choice) ? choice : legal.first);
   }
 
   void _playCard(Seat seat, PlayingCard card) {

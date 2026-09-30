@@ -37,6 +37,7 @@ class RemoteTableClient extends TableClient {
     ChannelConnector? connect,
     this.maxBackoff = const Duration(seconds: 8),
     this.initialAttempts = 3,
+    this.giveUpAfter = const Duration(minutes: 3),
   }) : _code = roomCode?.trim().toUpperCase(),
        _connector = connect ?? connectWebSocket {
     unawaited(_connect());
@@ -49,6 +50,11 @@ class RemoteTableClient extends TableClient {
 
   /// How many times to try before giving up if we never got in at all.
   final int initialAttempts;
+
+  /// How long to keep reconnecting after losing an established game
+  /// (the server holds a room for 10 minutes; a bot covers meanwhile).
+  final Duration giveUpAfter;
+  DateTime? _lostSince;
 
   final ChannelConnector _connector;
   String? _code;
@@ -191,6 +197,7 @@ class RemoteTableClient extends TableClient {
         _code = message.code;
         _everJoined = true;
         _failures = 0;
+        _lostSince = null;
         _status = ConnectionStatus.connected;
       case ErrorMessage(:final message, :final fatal):
         if (fatal) {
@@ -214,6 +221,13 @@ class RemoteTableClient extends TableClient {
       _fatalError =
           "Couldn't reach a Spades game at ${server.host}:${server.port}. "
           'Check the address and that you are on the same network.';
+      _shutDown();
+      notifyListeners();
+      return;
+    }
+    final lostSince = _lostSince ??= DateTime.now();
+    if (_everJoined && DateTime.now().difference(lostSince) > giveUpAfter) {
+      _fatalError = 'Lost the connection to the game.';
       _shutDown();
       notifyListeners();
       return;

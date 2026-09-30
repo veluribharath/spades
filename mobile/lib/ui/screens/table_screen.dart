@@ -507,7 +507,7 @@ class _HumanSeat extends StatelessWidget {
               faceUp: true,
               cardWidth: 66,
               legalCards: view.isMyPlayTurn ? view.legalCards : null,
-              onCardTap: onPlay,
+              onCardTap: view.isMyPlayTurn ? onPlay : null,
             ),
           ),
         ),

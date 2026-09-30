@@ -157,4 +157,41 @@ void main() {
     alice.dispose();
     bob.dispose();
   });
+
+  test(
+    'when the host closes the room, everyone is told and stops retrying',
+    () async {
+      final alice = client('alice-client');
+      await _until(alice, () => alice.room != null);
+      final bob = client('bob-client-1', code: alice.code);
+      await _until(bob, () => bob.room != null);
+      hub.dispose(reason: 'The host closed the room.');
+      await _until(bob, () => bob.fatalError != null);
+      expect(bob.fatalError, 'The host closed the room.');
+      expect(bob.status, ConnectionStatus.closed);
+      final connections = net.connectionCount;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(net.connectionCount, connections, reason: 'no reconnect attempts');
+      alice.dispose();
+      bob.dispose();
+    },
+  );
+
+  test('an established game gives up after a long outage', () async {
+    final alice = RemoteTableClient(
+      server: _server,
+      name: 'A',
+      clientId: 'alice-client',
+      connect: net.connect,
+      maxBackoff: const Duration(milliseconds: 20),
+      giveUpAfter: const Duration(milliseconds: 300),
+    );
+    await _until(alice, () => alice.room != null);
+    net.refuse = true;
+    net.dropAll();
+    await _until(alice, () => alice.status == ConnectionStatus.reconnecting);
+    await _until(alice, () => alice.fatalError != null);
+    expect(alice.fatalError, contains('Lost the connection'));
+    alice.dispose();
+  });
 }

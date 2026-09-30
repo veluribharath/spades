@@ -55,6 +55,7 @@ String displayAddress(Uri uri) {
   final defaultPort =
       (uri.scheme == 'wss' && uri.port == 443) ||
       (uri.scheme == 'ws' && uri.port == kDefaultGamePort);
+  final path = uri.path == '/' ? '' : uri.path;
   final hostPort = defaultPort ? uri.host : '${uri.host}:${uri.port}';
-  return uri.scheme == 'wss' ? 'wss://$hostPort' : hostPort;
+  return uri.scheme == 'wss' ? 'wss://$hostPort$path' : '$hostPort$path';
 }

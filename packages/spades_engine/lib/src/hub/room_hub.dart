@@ -50,9 +50,10 @@ class RoomHub {
 
   HubPeer connect(PeerConnection connection) => HubPeer._(this, connection);
 
-  void dispose() {
+  /// Closes every room; connected players are told [reason].
+  void dispose({String reason = 'The room was closed.'}) {
     for (final room in _rooms.values.toList()) {
-      room.close();
+      room.close(reason: reason);
     }
   }
 
@@ -198,8 +199,10 @@ class HubPeer {
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
     if (cleaned.isEmpty) return 'Player';
-    return cleaned.length > kMaxNameLength
-        ? cleaned.substring(0, kMaxNameLength).trim()
+    // Cut on code points so an emoji is never split in half.
+    final runes = cleaned.runes;
+    return runes.length > kMaxNameLength
+        ? String.fromCharCodes(runes.take(kMaxNameLength)).trim()
         : cleaned;
   }
 }
@@ -232,6 +235,21 @@ class _Room {
   GameSession? session;
   Timer? _idleTimer;
   bool _closed = false;
+
+  /// While > 0, broadcasts are deferred and sent once at the end of
+  /// [_batch] (several session updates → one snapshot per player).
+  int _batchDepth = 0;
+  bool _broadcastPending = false;
+
+  void _batch(void Function() updates) {
+    _batchDepth++;
+    try {
+      updates();
+    } finally {
+      _batchDepth--;
+    }
+    if (_batchDepth == 0 && _broadcastPending) broadcast();
+  }
 
   _Member addMember(String id, String name) => members[id] = _Member(id, name);
 
@@ -269,11 +287,13 @@ class _Room {
     _idleTimer?.cancel();
     _idleTimer = null;
     final seat = member.seat;
-    if (session != null && seat != null) {
-      session!.setAutopilot(seat, false);
-      session!.setConnected(seat, true);
-    }
-    broadcast();
+    _batch(() {
+      if (session != null && seat != null) {
+        session!.setAutopilot(seat, false);
+        session!.setConnected(seat, true);
+      }
+      broadcast();
+    });
   }
 
   void handle(_Member member, ClientMessage message) {
@@ -369,15 +389,16 @@ class _Room {
     member.graceTimer?.cancel();
     member.graceTimer = null;
     final seat = member.seat;
-    if (session != null && seat != null) {
-      // Seat stays theirs (they can rejoin with the code); a bot covers.
-      session!.setConnected(seat, false);
-      session!.setAutopilot(seat, true);
-    } else {
-      _remove(member);
-    }
-    if (_closed) return;
-    broadcast();
+    _batch(() {
+      if (session != null && seat != null) {
+        // Seat stays theirs (they can rejoin with the code); a bot covers.
+        session!.setConnected(seat, false);
+        session!.setAutopilot(seat, true);
+      } else {
+        _remove(member);
+      }
+      broadcast();
+    });
     _checkIdle();
   }
 
@@ -385,7 +406,10 @@ class _Room {
     if (member.peer != peer) return;
     member.peer = null;
     final seat = member.seat;
-    if (session != null && seat != null) session!.setConnected(seat, false);
+    _batch(() {
+      if (session != null && seat != null) session!.setConnected(seat, false);
+      broadcast();
+    });
     member.graceTimer?.cancel();
     member.graceTimer = Timer(hub.reconnectGrace, () {
       member.graceTimer = null;
@@ -395,11 +419,9 @@ class _Room {
         s.setAutopilot(member.seat!, true);
       } else {
         _remove(member);
-        if (_closed) return;
         broadcast();
       }
     });
-    broadcast();
     _checkIdle();
   }
 
@@ -424,7 +446,9 @@ class _Room {
     _idleTimer = Timer(hub.idleRoomTimeout, close);
   }
 
-  void close() {
+  /// Ends the room. Anyone still connected is told [reason] (as a fatal
+  /// error, so their app stops trying to reconnect) and disconnected.
+  void close({String reason = 'The room was closed.'}) {
     if (_closed) return;
     _closed = true;
     _idleTimer?.cancel();
@@ -432,9 +456,12 @@ class _Room {
     for (final m in members.values) {
       m.graceTimer?.cancel();
       final peer = m.peer;
+      m.peer = null;
       if (peer != null) {
         peer._room = null;
         peer._member = null;
+        peer._error(reason, fatal: true);
+        peer._connection.close();
       }
     }
     hub._rooms.remove(code);
@@ -442,6 +469,11 @@ class _Room {
 
   void broadcast() {
     if (_closed) return;
+    if (_batchDepth > 0) {
+      _broadcastPending = true;
+      return;
+    }
+    _broadcastPending = false;
     for (final member in members.values) {
       if (member.connected) _sendSnapshot(member);
     }

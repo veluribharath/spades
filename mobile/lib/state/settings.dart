@@ -8,12 +8,15 @@ import 'tab_identity.dart';
 /// the last address you joined, and a stable client id so a restarted
 /// app can reclaim its seat in a running game.
 class MultiplayerSettings {
-  MultiplayerSettings._(this._prefs);
+  MultiplayerSettings._(this._prefs, this._tabId);
 
-  static Future<MultiplayerSettings> load() async =>
-      MultiplayerSettings._(await SharedPreferences.getInstance());
+  static Future<MultiplayerSettings> load() async => MultiplayerSettings._(
+    await SharedPreferences.getInstance(),
+    await tabScopedId(_newId),
+  );
 
   final SharedPreferences _prefs;
+  final String? _tabId;
 
   static const _nameKey = 'mp.name';
   static const _addressKey = 'mp.address';
@@ -33,7 +36,7 @@ class MultiplayerSettings {
   /// Identifies this player to game servers across reconnects and app
   /// restarts (per browser tab on the web).
   String get clientId {
-    final perTab = tabScopedId(_newId);
+    final perTab = _tabId;
     if (perTab != null) return perTab;
     final existing = _prefs.getString(_clientIdKey);
     if (existing != null) return existing;

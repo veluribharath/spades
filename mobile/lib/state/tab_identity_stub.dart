@@ -1,1 +1,1 @@
-String? tabScopedId(String Function() generate) => null;
+Future<String?> tabScopedId(String Function() generate) async => null;
