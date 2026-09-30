@@ -293,15 +293,19 @@ class _ConnectionBanner extends StatelessWidget {
 }
 
 /// "bid 2 · won 1" while playing, "bid 2" while bidding, nothing before
-/// the seat has bid; connection trouble takes precedence.
+/// the seat has bid — followed by any connection trouble ("offline",
+/// "bot playing").
 String? _seatDetail(TableView view, Seat seat) {
   final info = view.info(seat);
-  if (info.autopilot) return 'bot playing';
-  if (!info.connected) return 'offline';
   final bid = info.bid;
-  if (bid == null) return null;
-  if (view.phase == HandPhase.bidding) return 'bid $bid';
-  return 'bid $bid · won ${info.tricksWon}';
+  final parts = [
+    if (bid != null)
+      view.phase == HandPhase.bidding
+          ? 'bid $bid'
+          : 'bid $bid · won ${info.tricksWon}',
+    if (info.autopilot) 'bot playing' else if (!info.connected) 'offline',
+  ];
+  return parts.isEmpty ? null : parts.join(' · ');
 }
 
 class _OpponentSeat extends StatelessWidget {

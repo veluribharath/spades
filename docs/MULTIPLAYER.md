@@ -20,7 +20,7 @@ single-player game keeps working exactly as before.
 └────────────────────────────────────────────────────────────────────┘
             ▲ same code runs in both places ▲
 ┌──── standalone server ────┐   ┌──── host phone (LAN) ─────────────┐
-│ dart run bin/server.dart  │   │ app starts RoomHub on port 4040   │
+│ dart run bin/server.dart  │   │ app starts RoomHub on port 8080   │
 └───────────────────────────┘   └───────────────────────────────────┘
             ▲ WebSocket (JSON)            ▲
 ┌──────────────────────── mobile app ────────────────────────────────┐
@@ -84,7 +84,33 @@ is on) sent after every change; `error{message}`.
 Full snapshots instead of deltas keep clients stateless and make
 reconnects trivial; a view is a few KB at most.
 
-## 5. Build steps
+Every client action carries a `seq`; each snapshot echoes the last one
+the server processed as `ack`. A client doesn't send another action
+until its last one is acked (or answered with an error), so a double
+tap or a burst of snapshots can never make it act on a stale view.
+
+## 5. How to run it
+
+See [mobile/README.md](../mobile/README.md#play-with-friends) for hosting
+on a phone, running the standalone server (`dart run bin/server.dart`
+or the Dockerfile in `packages/spades_engine`), and trying multiplayer
+with several browser tabs on one computer.
+
+## 6. Known limits
+
+- A phone that hosts must keep the app in the foreground; if the OS
+  suspends it, the room goes with it. Use a server for long games.
+- Room codes (4 letters) are for convenience, not secrecy: on a public
+  server anyone who guesses a code can join a room still in its lobby.
+  Seats can't be taken over once the game starts — a returning player is
+  recognized by a private per-device id that other players never see.
+- The server caps parsed message size, but dart:io buffers a WebSocket
+  message before that check; put a public server behind a reverse proxy
+  that limits frame size.
+- Hosting on this device isn't available in the browser build (browsers
+  can't accept incoming connections); browsers can join or use a server.
+
+## 7. Build steps (as built)
 
 1. Extract `packages/spades_engine`; move engine + tests; app depends on
    it by path.
@@ -98,7 +124,7 @@ reconnects trivial; a view is a few KB at most.
 7. Review → fix → repeat; docs and platform permissions (Android
    INTERNET, iOS local network, cleartext `ws://` on LAN).
 
-## 6. Testing
+## 8. Testing
 
 - Engine: rules tests (existing), session tests incl. hidden-info,
   autopilot, readiness; JSON round-trips.

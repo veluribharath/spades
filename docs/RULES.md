@@ -33,10 +33,13 @@ are simultaneous-feeling but sequential and are locked once spoken.
 The first bidder therefore rotates clockwise each hand along with the
 dealer.
 
-**House rule (this app):** the human player always bids *after* their
-partner (North), so they have the final say on the team's total. If
-the clockwise order would put the human before North, the two swap
-bidding slots for that hand; West and East keep their normal slots.
+**House rule (this app):** a human player whose partner is a bot always
+bids *after* that partner, so they have the final say on the team's
+total. If the clockwise order would put the human first, the two swap
+bidding slots for that hand; the other team keeps its normal slots (or
+makes the same swap, if it too pairs a human with a bot). Two human
+partners (multiplayer) bid in plain clockwise order. In single-player
+this means you always bid after North.
 
 - **Regular bid**: any integer from 0 up to the number of cards dealt
   that hand (13 normally; fewer in Progressive Spades, §7).

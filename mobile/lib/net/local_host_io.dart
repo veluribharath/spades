@@ -32,5 +32,5 @@ class _IoLocalHost implements LocalHost {
   int get port => _server.port;
 
   @override
-  Future<void> stop() => _server.close();
+  Future<void> stop() => _server.close(reason: 'The host closed the room.');
 }
