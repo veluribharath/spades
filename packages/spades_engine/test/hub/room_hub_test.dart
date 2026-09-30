@@ -7,8 +7,13 @@ import 'package:test/test.dart';
 
 /// An in-memory client: records what the hub sends and can talk back.
 class FakeClient implements PeerConnection {
-  FakeClient(RoomHub hub, this.clientId, {this.name = 'Player'}) {
-    peer = hub.connect(this);
+  FakeClient(
+    RoomHub hub,
+    this.clientId, {
+    this.name = 'Player',
+    String? address,
+  }) {
+    peer = hub.connect(this, remoteAddress: address);
   }
 
   late final HubPeer peer;
@@ -29,6 +34,12 @@ class FakeClient implements PeerConnection {
 
   void join(String code) =>
       say(JoinRoom(code: code, name: name, clientId: clientId));
+
+  /// Joins and reports whether it worked.
+  bool tryJoin(String code) {
+    join(code);
+    return received.lastOrNull is RoomSnapshot;
+  }
 
   RoomSnapshot get room => received.whereType<RoomSnapshot>().last;
   TableView get view => room.view!;
@@ -155,20 +166,108 @@ void main() {
       x.peer.receive('not json');
       expect(x.lastError?.message, contains("Couldn't understand"));
       x.peer.receive('{"type":"bid","bid":"99"}');
-      expect(x.lastError, isNotNull);
-      x.say(PlaceBid(Bid.regular(1)));
-      expect(x.lastError?.message, 'Join a room first.');
-      x.peer.receive('{"type":"create","v":1,"name":"a","clientId":"!!"}');
-      expect(x.lastError?.message, 'Invalid client id.');
-      x.peer.receive(
-        '{"type":"create","v":99,"name":"a","clientId":"xxxxxxxx-1"}',
-      );
-      expect(x.lastError?.message, contains('different version'));
+      expect(x.lastError?.fatal, isFalse);
       x.peer.receive('x' * 5000);
       expect(x.lastError?.message, contains('too large'));
-      x.join('ZZZZ');
-      expect(x.lastError?.fatal, isTrue);
+      expect(x.isClosed, isFalse, reason: 'non-fatal problems keep the line');
+
+      // Each fatal problem ends that connection.
+      void fatal(String raw, Matcher message) {
+        final c = FakeClient(hub, 'cccccccc-1');
+        c.peer.receive(raw);
+        expect(c.lastError?.message, message);
+        expect(c.lastError?.fatal, isTrue);
+        expect(c.isClosed, isTrue);
+        final n = c.received.length;
+        c.create();
+        expect(c.received.length, n, reason: 'ignored after hanging up');
+      }
+
+      fatal(PlaceBid(Bid.regular(1)).encode(), equals('Join a room first.'));
+      fatal(
+        '{"type":"create","v":1,"name":"a","clientId":"!!"}',
+        equals('Invalid client id.'),
+      );
+      fatal(
+        '{"type":"create","v":99,"name":"a","clientId":"xxxxxxxx-1"}',
+        contains('different version'),
+      );
+      fatal(
+        const JoinRoom(
+          code: 'ZZZZ',
+          name: 'a',
+          clientId: 'xxxxxxxx-1',
+        ).encode(),
+        contains('No room'),
+      );
       expect(hub.roomCount, 0);
+      hub.dispose();
+    });
+  });
+
+  test('guessing room codes is rate-limited per address', () {
+    fakeAsync((async) {
+      final hub = _hub();
+      final host = FakeClient(hub, 'hosthost-1')..create();
+      final code = host.room.code;
+
+      FakeClient guess(String code, {String address = '10.0.0.66'}) {
+        final c = FakeClient(hub, 'guesser-01', address: address);
+        c.join(code);
+        return c;
+      }
+
+      for (var i = 0; i < RoomHub.maxFailedJoins; i++) {
+        expect(guess('QQQQ').lastError?.message, contains('No room'));
+      }
+      // Even the right code is refused now…
+      expect(guess(code).lastError?.message, contains('Too many attempts'));
+      // …but only from that address,
+      expect(guess(code, address: '10.0.0.7').room.code, code);
+      // and only for a while.
+      async.elapse(const Duration(minutes: 1, seconds: 1));
+      expect(
+        FakeClient(hub, 'guesser-02', address: '10.0.0.66').tryJoin(code),
+        isTrue,
+      );
+      hub.dispose();
+    });
+  });
+
+  test('names are fixed once the game starts', () {
+    fakeAsync((async) {
+      final hub = _hub();
+      final alice = FakeClient(hub, 'alice-0001', name: 'Alice')..create();
+      final code = alice.room.code;
+      final bob = FakeClient(hub, 'bob-00001', name: 'Bob')..join(code);
+      alice.say(const StartGame());
+      bob.peer.closed();
+      final bob2 = FakeClient(hub, 'bob-00001', name: 'Robert')..join(code);
+      expect(bob2.room.seats[Seat.north.index].name, 'Bob');
+      expect(alice.view.info(Seat.north).name, 'Bob');
+      hub.dispose();
+    });
+  });
+
+  test('one action → one snapshot per player', () {
+    fakeAsync((async) {
+      final hub = _hub();
+      final alice = FakeClient(hub, 'alice-0001')..create();
+      final bob = FakeClient(hub, 'bob-00001')..join(alice.room.code);
+      bob.say(const Sit(Seat.west));
+      alice.say(const StartGame());
+      // Play to the end of the first hand.
+      while (alice.view.phase != HandPhase.complete ||
+          alice.view.awaitingReady.isEmpty) {
+        if (!alice.act() && !bob.act()) {
+          async.elapse(const Duration(milliseconds: 10));
+        }
+      }
+      alice.say(const ReadyForNextHand());
+      final before = bob.received.length;
+      bob.say(const ReadyForNextHand()); // readies AND deals the next hand
+      expect(bob.received.length - before, 1);
+      expect(bob.view.roundNumber, 2);
       hub.dispose();
     });
   });

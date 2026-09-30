@@ -118,7 +118,20 @@ class _RoomScreenState extends State<RoomScreen> {
       );
       if (ok != true) return;
     }
-    _client.leave();
+    await _exit();
+  }
+
+  /// Leaves the room and closes this screen. A host closes the room
+  /// outright — server first — so nobody briefly sees a half-left room
+  /// (e.g. being promoted to host) before it disappears.
+  Future<void> _exit() async {
+    final host = widget.localHost;
+    if (host != null) {
+      _client.close();
+      await host.stop();
+    } else {
+      _client.leave();
+    }
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -129,7 +142,7 @@ class _RoomScreenState extends State<RoomScreen> {
 
     if (fatal != null) {
       return _Message(
-        title: "Couldn't join",
+        title: room == null ? "Couldn't join" : 'Disconnected',
         body: fatal,
         action: 'Back',
         onAction: () => Navigator.of(context).pop(),
@@ -142,17 +155,14 @@ class _RoomScreenState extends State<RoomScreen> {
             ? 'Opening your room.'
             : 'Reaching ${displayAddress(_client.server)}.',
         action: 'Cancel',
-        onAction: () {
-          _client.leave();
-          Navigator.of(context).pop();
-        },
+        onAction: _exit,
         busy: true,
       );
     }
     if (room.started && room.view != null) {
       return TableScreen(
         client: _client,
-        onLeave: _afterTableLeave,
+        onLeave: _exit,
         leaveWarning: widget.localHost != null
             ? 'You are hosting on this device — leaving ends the game for '
                   'everyone.'
@@ -172,12 +182,6 @@ class _RoomScreenState extends State<RoomScreen> {
         onLeave: _leave,
       ),
     );
-  }
-
-  /// TableScreen already called [TableClient.leave]; just close the room
-  /// screen.
-  void _afterTableLeave() {
-    if (mounted) Navigator.of(context).pop();
   }
 }
 

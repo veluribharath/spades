@@ -143,7 +143,7 @@ class GameSession {
     };
   }
 
-  void bid(Seat seat, Bid bid) {
+  void bid(Seat seat, Bid bid) => _op(() {
     _checkTurn(seat, HandPhase.bidding);
     try {
       match.submitBid(bid);
@@ -152,18 +152,18 @@ class GameSession {
     }
     _changed();
     _schedule();
-  }
+  });
 
-  void play(Seat seat, PlayingCard card) {
+  void play(Seat seat, PlayingCard card) => _op(() {
     _checkTurn(seat, HandPhase.playing);
     if (!match.legalPlaysFor(seat).contains(card)) {
       throw SessionException("You can't play $card right now.");
     }
     _playCard(seat, card);
-  }
+  });
 
   /// [seat] is ready for the next hand; deals it once nobody is pending.
-  void ready(Seat seat) {
+  void ready(Seat seat) => _op(() {
     if (_disposed) return;
     if (match.phase != HandPhase.complete || _heldTrick != null) {
       throw SessionException('The hand is still in progress.');
@@ -174,11 +174,11 @@ class GameSession {
     _ready.add(seat);
     _changed();
     _maybeDealNext();
-  }
+  });
 
   /// Marks a human's connection up or down (shown to the other players;
   /// a disconnected player never holds up the next deal).
-  void setConnected(Seat seat, bool connected) {
+  void setConnected(Seat seat, bool connected) => _op(() {
     if (_disposed) return;
     final changed = connected
         ? _disconnected.remove(seat)
@@ -186,18 +186,18 @@ class GameSession {
     if (!changed) return;
     _changed();
     _maybeDealNext();
-  }
+  });
 
   /// Lets a bot play for a human who has dropped out (or hands control
   /// back when they return).
-  void setAutopilot(Seat seat, bool on) {
+  void setAutopilot(Seat seat, bool on) => _op(() {
     if (_disposed || players[seat]!.isBot) return;
     final changed = on ? _autopilot.add(seat) : _autopilot.remove(seat);
     if (!changed) return;
     _changed();
     _schedule();
     _maybeDealNext();
-  }
+  });
 
   TableView viewFor(Seat seat) {
     final held = _heldTrick;
@@ -278,7 +278,31 @@ class GameSession {
     }
   }
 
-  void _changed() => onChanged?.call();
+  /// Nesting depth of [_op]; while > 0, [_changed] only marks the table
+  /// dirty so one action produces exactly one [onChanged].
+  int _opDepth = 0;
+  bool _dirty = false;
+
+  void _op(void Function() action) {
+    _opDepth++;
+    try {
+      action();
+    } finally {
+      _opDepth--;
+      if (_opDepth == 0 && _dirty) {
+        _dirty = false;
+        onChanged?.call();
+      }
+    }
+  }
+
+  void _changed() {
+    if (_opDepth > 0) {
+      _dirty = true;
+    } else {
+      onChanged?.call();
+    }
+  }
 
   void _schedule() {
     _turnTimer?.cancel();
@@ -292,7 +316,7 @@ class GameSession {
     }
   }
 
-  void _runBotBid() {
+  void _runBotBid() => _op(() {
     if (_disposed || match.phase != HandPhase.bidding) return;
     final seat = match.nextBidder;
     if (!isBotControlled(seat)) return;
@@ -313,9 +337,9 @@ class GameSession {
     }
     _changed();
     _schedule();
-  }
+  });
 
-  void _runBotPlay() {
+  void _runBotPlay() => _op(() {
     if (_disposed || match.phase != HandPhase.playing) return;
     final trick = match.currentTrick!;
     final seat = trick.nextToPlay;
@@ -328,7 +352,7 @@ class GameSession {
     );
     final legal = match.legalPlaysFor(seat);
     _playCard(seat, legal.contains(choice) ? choice : legal.first);
-  }
+  });
 
   void _playCard(Seat seat, PlayingCard card) {
     final trick = match.currentTrick!;
@@ -339,14 +363,17 @@ class GameSession {
       // the finished trick on the table so every card gets seen.
       _heldTrick = trick;
       _holdTimer?.cancel();
-      _holdTimer = Timer(timing.trickHold, () {
-        if (_disposed) return;
-        _heldTrick = null;
-        if (match.phase == HandPhase.complete) _ready.clear();
-        _changed();
-        _schedule();
-        _maybeDealNext();
-      });
+      _holdTimer = Timer(
+        timing.trickHold,
+        () => _op(() {
+          if (_disposed) return;
+          _heldTrick = null;
+          if (match.phase == HandPhase.complete) _ready.clear();
+          _changed();
+          _schedule();
+          _maybeDealNext();
+        }),
+      );
     }
     _changed();
     _schedule();

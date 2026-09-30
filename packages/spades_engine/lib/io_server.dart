@@ -69,7 +69,7 @@ class SpadesServer {
   void _serve(WebSocket socket, String? remote) {
     socket.pingInterval = pingInterval;
     _sockets.add(socket);
-    final peer = hub.connect(_SocketConnection(socket));
+    final peer = hub.connect(_SocketConnection(socket), remoteAddress: remote);
     _log?.call('connected ${remote ?? '?'} (${_sockets.length} open)');
     var gone = false;
     void cleanUp() {
@@ -104,9 +104,14 @@ class SpadesServer {
   /// Stops serving. Players still connected are told [reason].
   Future<void> close({String reason = 'The game server shut down.'}) async {
     hub.dispose(reason: reason);
-    for (final s in _sockets.toList()) {
-      await s.close(WebSocketStatus.goingAway);
-    }
+    // In parallel, and bounded: a vanished phone won't answer the close
+    // handshake.
+    await Future.wait([
+      for (final s in _sockets.toList())
+        s
+            .close(WebSocketStatus.goingAway)
+            .timeout(const Duration(seconds: 2), onTimeout: () => null),
+    ]);
     await _http.close(force: true);
   }
 }
@@ -133,20 +138,21 @@ Future<List<String>> localNetworkAddresses() async {
     final interfaces = await NetworkInterface.list(
       type: InternetAddressType.IPv4,
     );
-    final addresses = [
-      for (final i in interfaces)
-        for (final a in i.addresses)
-          if (!a.isLoopback && !a.isLinkLocal) a.address,
-    ];
-    // Typical home Wi-Fi ranges first.
-    addresses.sort((a, b) {
-      int rank(String x) => x.startsWith('192.168.')
-          ? 0
-          : x.startsWith('10.')
-          ? 1
-          : 2;
-      return rank(a).compareTo(rank(b));
-    });
+    // Cellular / VPN interfaces can't be reached from the Wi-Fi, even
+    // when they have private-looking addresses.
+    final cellularOrVpn = RegExp(
+      r'^(rmnet|ccmni|pdp_ip|wwan|tun|utun|ppp|ipsec|clat|v4-)',
+      caseSensitive: false,
+    );
+    final ranked = <(int, String)>[];
+    for (final i in interfaces) {
+      for (final a in i.addresses) {
+        if (a.isLoopback || a.isLinkLocal) continue;
+        ranked.add((cellularOrVpn.hasMatch(i.name) ? 1 : 0, a.address));
+      }
+    }
+    ranked.sort((a, b) => a.$1.compareTo(b.$1));
+    final addresses = [for (final r in ranked) r.$2];
     return addresses;
   } catch (_) {
     return const [];

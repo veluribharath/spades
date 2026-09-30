@@ -27,8 +27,9 @@ class TableScreen extends StatefulWidget {
   /// Replaces the default "are you sure" text in the leave dialog.
   final String? leaveWarning;
 
-  /// Called after the player confirms leaving (defaults to popping the
-  /// route).
+  /// Called once the player confirms leaving; it takes over leaving the
+  /// game and closing the screen. By default the client leaves and the
+  /// route pops.
   final VoidCallback? onLeave;
 
   @override
@@ -116,10 +117,10 @@ class _TableScreenState extends State<TableScreen> {
   }
 
   void _leave() {
-    widget.client.leave();
     if (widget.onLeave != null) {
       widget.onLeave!();
     } else {
+      widget.client.leave();
       Navigator.of(context).pop();
     }
   }

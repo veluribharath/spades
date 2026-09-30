@@ -135,6 +135,14 @@ class RemoteTableClient extends TableClient {
     notifyListeners();
   }
 
+  /// Drops the connection without telling the room (used by a host that
+  /// is about to close the whole room anyway).
+  void close() {
+    if (_closed) return;
+    _shutDown();
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _shutDown();

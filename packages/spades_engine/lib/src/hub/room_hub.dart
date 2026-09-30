@@ -48,7 +48,31 @@ class RoomHub {
   int get roomCount => _rooms.length;
   bool hasRoom(String code) => _rooms.containsKey(code);
 
-  HubPeer connect(PeerConnection connection) => HubPeer._(this, connection);
+  /// Registers a new connection. [remoteAddress] (the client's IP) is
+  /// used to slow down anyone guessing room codes.
+  HubPeer connect(PeerConnection connection, {String? remoteAddress}) =>
+      HubPeer._(this, connection, remoteAddress);
+
+  /// Failed joins allowed per address per [_failedJoinWindow].
+  static const maxFailedJoins = 10;
+  static const _failedJoinWindow = Duration(minutes: 1);
+  final Map<String, int> _failedJoins = {};
+
+  bool _joinsBlocked(String? address) =>
+      address != null && (_failedJoins[address] ?? 0) >= maxFailedJoins;
+
+  void _recordFailedJoin(String? address) {
+    if (address == null) return;
+    _failedJoins[address] = (_failedJoins[address] ?? 0) + 1;
+    Timer(_failedJoinWindow, () {
+      final n = (_failedJoins[address] ?? 1) - 1;
+      if (n <= 0) {
+        _failedJoins.remove(address);
+      } else {
+        _failedJoins[address] = n;
+      }
+    });
+  }
 
   /// Closes every room; connected players are told [reason].
   void dispose({String reason = 'The room was closed.'}) {
@@ -72,10 +96,15 @@ class RoomHub {
 
 /// The hub's handle on one connection.
 class HubPeer {
-  HubPeer._(this._hub, this._connection);
+  HubPeer._(this._hub, this._connection, this._remoteAddress);
 
   final RoomHub _hub;
   final PeerConnection _connection;
+  final String? _remoteAddress;
+
+  /// Set once the server has given up on this connection; anything it
+  /// still sends is ignored.
+  bool _finished = false;
   _Room? _room;
   _Member? _member;
 
@@ -86,6 +115,7 @@ class HubPeer {
   static final _clientIdPattern = RegExp(r'^[A-Za-z0-9_-]{8,64}$');
 
   void receive(String raw) {
+    if (_finished) return;
     if (raw.length > kMaxClientMessageBytes) {
       _error('That message was too large.');
       return;
@@ -111,7 +141,7 @@ class HubPeer {
         final room = _room;
         final member = _member;
         if (room == null || member == null) {
-          _error('Join a room first.', fatal: true);
+          _fail('Join a room first.');
           return;
         }
         room.handle(member, message);
@@ -132,17 +162,23 @@ class HubPeer {
   void _error(String message, {bool fatal = false}) =>
       _send(ErrorMessage(message, fatal: fatal));
 
+  /// A fatal problem: tell the client why, then hang up.
+  void _fail(String message) {
+    _error(message, fatal: true);
+    _finished = true;
+    _connection.close();
+  }
+
   bool _checkHello(String clientId, int version) {
     if (version != kProtocolVersion) {
-      _error(
+      _fail(
         'This server runs a different version of Spades. Update the app '
         'on every device and try again.',
-        fatal: true,
       );
       return false;
     }
     if (!_clientIdPattern.hasMatch(clientId)) {
-      _error('Invalid client id.', fatal: true);
+      _fail('Invalid client id.');
       return false;
     }
     if (_room != null) {
@@ -154,7 +190,7 @@ class HubPeer {
 
   void _create(String name, String clientId) {
     if (_hub._rooms.length >= _hub.maxRooms) {
-      _error('The server is full right now. Try again later.', fatal: true);
+      _fail('The server is full right now. Try again later.');
       return;
     }
     final room = _Room(_hub, _hub._newCode());
@@ -166,25 +202,31 @@ class HubPeer {
   }
 
   void _join(String rawCode, String name, String clientId) {
+    if (_hub._joinsBlocked(_remoteAddress)) {
+      _fail('Too many attempts. Wait a minute and try again.');
+      return;
+    }
     final code = rawCode.trim().toUpperCase();
     final room = _hub._rooms[code];
     if (room == null) {
-      _error('No room with code "$code".', fatal: true);
+      _hub._recordFailedJoin(_remoteAddress);
+      _fail('No room with code "$code".');
       return;
     }
     final existing = room.members[clientId];
     if (existing != null) {
-      existing.name = _sanitizeName(name);
+      // Names are fixed once the game starts (the table shows them).
+      if (room.session == null) existing.name = _sanitizeName(name);
       room.bind(existing, this);
       return;
     }
     if (room.session != null) {
-      _error('That game has already started.', fatal: true);
+      _fail('That game has already started.');
       return;
     }
     final seat = room.openSeat();
     if (seat == null) {
-      _error('That room is full.', fatal: true);
+      _fail('That room is full.');
       return;
     }
     final member = room.addMember(clientId, _sanitizeName(name));
@@ -273,11 +315,7 @@ class _Room {
       // is retired.
       previous._room = null;
       previous._member = null;
-      previous._error(
-        'You joined this room from another connection.',
-        fatal: true,
-      );
-      previous._connection.close();
+      previous._fail('You joined this room from another connection.');
     }
     member.peer = peer;
     member.graceTimer?.cancel();
@@ -337,6 +375,8 @@ class _Room {
       case LeaveRoom():
         _leave(member);
       case CreateRoom() || JoinRoom():
+        // Unreachable: HubPeer.receive handles these before routing to a
+        // room. Listed because the switch must cover the sealed type.
         peer._error("You're already in a room.");
     }
   }
@@ -460,8 +500,7 @@ class _Room {
       if (peer != null) {
         peer._room = null;
         peer._member = null;
-        peer._error(reason, fatal: true);
-        peer._connection.close();
+        peer._fail(reason);
       }
     }
     hub._rooms.remove(code);

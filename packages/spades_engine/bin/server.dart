@@ -41,7 +41,14 @@ Future<void> _run(List<String> args) async {
   void log(String message) =>
       stdout.writeln('${DateTime.now().toIso8601String()} $message');
 
-  final server = await SpadesServer.bind(address: host, port: port, log: log);
+  final SpadesServer server;
+  try {
+    server = await SpadesServer.bind(address: host, port: port, log: log);
+  } catch (e) {
+    // Fail loudly so process managers see the server didn't start.
+    stderr.writeln('Could not listen on $host:$port — $e');
+    exit(1);
+  }
   log('Spades server listening on ws://$host:${server.port}/');
   for (final address in await localNetworkAddresses()) {
     log('  on this network: $address:${server.port}');
