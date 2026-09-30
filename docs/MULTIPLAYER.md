@@ -106,7 +106,9 @@ with several browser tabs on one computer.
   recognized by a private per-device id that other players never see.
 - The server caps parsed message size, but dart:io buffers a WebSocket
   message before that check; put a public server behind a reverse proxy
-  that limits frame size.
+  that limits frame size (and run it with `--trust-proxy` so the
+  wrong-code limit — 10 per minute per address — sees real client
+  addresses). Players already in a room can always rejoin it.
 - Hosting on this device isn't available in the browser build (browsers
   can't accept incoming connections); browsers can join or use a server.
 

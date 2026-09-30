@@ -39,6 +39,7 @@ class RoomScreen extends StatefulWidget {
 
 class _RoomScreenState extends State<RoomScreen> {
   String? _reportedCode;
+  bool _exiting = false;
 
   RemoteTableClient get _client => widget.client;
 
@@ -125,6 +126,9 @@ class _RoomScreenState extends State<RoomScreen> {
   /// outright — server first — so nobody briefly sees a half-left room
   /// (e.g. being promoted to host) before it disappears.
   Future<void> _exit() async {
+    // Stopping a host can take a moment; a second tap mustn't pop twice.
+    if (_exiting) return;
+    _exiting = true;
     final host = widget.localHost;
     if (host != null) {
       _client.close();

@@ -16,11 +16,15 @@ export 'multiplayer.dart';
 /// - `GET /` with a WebSocket upgrade → a game connection.
 /// - `GET /health` → `ok` (for load balancers / uptime checks).
 class SpadesServer {
-  SpadesServer._(this._http, this.hub, this._log);
+  SpadesServer._(this._http, this.hub, this._log, this._trustProxy);
 
   final HttpServer _http;
   final RoomHub hub;
   final void Function(String)? _log;
+
+  /// Take the client address from `X-Forwarded-For` (only safe behind a
+  /// reverse proxy that sets it).
+  final bool _trustProxy;
   final Set<WebSocket> _sockets = {};
 
   int get port => _http.port;
@@ -34,12 +38,13 @@ class SpadesServer {
     int port = 8080,
     RoomHub? hub,
     void Function(String message)? log,
+    bool trustProxy = false,
   }) async {
     final http = await HttpServer.bind(
       address ?? InternetAddress.anyIPv4,
       port,
     );
-    final server = SpadesServer._(http, hub ?? RoomHub(), log);
+    final server = SpadesServer._(http, hub ?? RoomHub(), log, trustProxy);
     http.listen(server._handle, onError: (Object e) => log?.call('http: $e'));
     return server;
   }
@@ -59,8 +64,14 @@ class SpadesServer {
         await request.response.close();
         return;
       }
+      final forwarded = _trustProxy
+          ? request.headers.value('x-forwarded-for')?.split(',').first.trim()
+          : null;
+      final remote =
+          (forwarded != null && forwarded.isNotEmpty ? forwarded : null) ??
+          request.connectionInfo?.remoteAddress.address;
       final socket = await WebSocketTransformer.upgrade(request);
-      _serve(socket, request.connectionInfo?.remoteAddress.address);
+      _serve(socket, remote);
     } catch (e) {
       _log?.call('request failed: $e');
     }

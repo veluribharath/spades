@@ -222,6 +222,10 @@ void main() {
       }
       // Even the right code is refused now…
       expect(guess(code).lastError?.message, contains('Too many attempts'));
+      // …except for someone already in that room coming back.
+      host.peer.closed();
+      final back = FakeClient(hub, 'hosthost-1', address: '10.0.0.66');
+      expect(back.tryJoin(code), isTrue);
       // …but only from that address,
       expect(guess(code, address: '10.0.0.7').room.code, code);
       // and only for a while.

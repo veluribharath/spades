@@ -202,18 +202,21 @@ class HubPeer {
   }
 
   void _join(String rawCode, String name, String clientId) {
-    if (_hub._joinsBlocked(_remoteAddress)) {
+    final code = rawCode.trim().toUpperCase();
+    final room = _hub._rooms[code];
+    final existing = room?.members[clientId];
+    // Returning players always get back in; only newcomers count toward
+    // the guessing limit (and are refused while it's exceeded, whether
+    // or not their code is right, so a blocked guesser learns nothing).
+    if (existing == null && _hub._joinsBlocked(_remoteAddress)) {
       _fail('Too many attempts. Wait a minute and try again.');
       return;
     }
-    final code = rawCode.trim().toUpperCase();
-    final room = _hub._rooms[code];
     if (room == null) {
       _hub._recordFailedJoin(_remoteAddress);
       _fail('No room with code "$code".');
       return;
     }
-    final existing = room.members[clientId];
     if (existing != null) {
       // Names are fixed once the game starts (the table shows them).
       if (room.session == null) existing.name = _sanitizeName(name);

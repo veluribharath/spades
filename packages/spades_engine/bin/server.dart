@@ -5,7 +5,11 @@ import 'package:spades_engine/io_server.dart';
 
 /// Standalone Spades multiplayer server.
 ///
-///     dart run bin/server.dart [--port 8080] [--host 0.0.0.0]
+///     dart run bin/server.dart [--port 8080] [--host 0.0.0.0] [--trust-proxy]
+///
+/// Pass --trust-proxy when running behind a reverse proxy (TLS
+/// terminator) so per-player limits use the real client address from
+/// X-Forwarded-For rather than the proxy's.
 ///
 /// The port can also come from the PORT environment variable (most
 /// hosting platforms set it).
@@ -27,7 +31,7 @@ Future<void> _run(List<String> args) async {
 
   if (args.contains('--help') || args.contains('-h')) {
     stdout.writeln(
-      'Usage: server [--port <port>] [--host <address>]\n'
+      'Usage: server [--port <port>] [--host <address>] [--trust-proxy]\n'
       'Serves Spades rooms over WebSockets at ws://<host>:<port>/',
     );
     return;
@@ -43,7 +47,12 @@ Future<void> _run(List<String> args) async {
 
   final SpadesServer server;
   try {
-    server = await SpadesServer.bind(address: host, port: port, log: log);
+    server = await SpadesServer.bind(
+      address: host,
+      port: port,
+      log: log,
+      trustProxy: args.contains('--trust-proxy'),
+    );
   } catch (e) {
     // Fail loudly so process managers see the server didn't start.
     stderr.writeln('Could not listen on $host:$port — $e');
