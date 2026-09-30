@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'tab_identity.dart';
+
 /// What the app remembers between launches for multiplayer: your name,
 /// the last address you joined, and a stable client id so a restarted
 /// app can reclaim its seat in a running game.
@@ -28,16 +30,24 @@ class MultiplayerSettings {
   String get lastRoom => _prefs.getString(_lastRoomKey) ?? '';
   set lastRoom(String value) => _prefs.setString(_lastRoomKey, value);
 
+  /// Identifies this player to game servers across reconnects and app
+  /// restarts (per browser tab on the web).
   String get clientId {
+    final perTab = tabScopedId(_newId);
+    if (perTab != null) return perTab;
     final existing = _prefs.getString(_clientIdKey);
     if (existing != null) return existing;
+    final id = _newId();
+    _prefs.setString(_clientIdKey, id);
+    return id;
+  }
+
+  static String _newId() {
     final random = Random.secure();
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    final id = String.fromCharCodes([
+    return String.fromCharCodes([
       for (var i = 0; i < 20; i++)
         chars.codeUnitAt(random.nextInt(chars.length)),
     ]);
-    _prefs.setString(_clientIdKey, id);
-    return id;
   }
 }

@@ -54,6 +54,7 @@ dependencies:
   web_socket_channel: ^3.0.3
   shared_preferences: ^2.5.5
   stream_channel: ^2.1.4
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:

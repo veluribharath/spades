@@ -14,7 +14,12 @@ typedef ChannelConnector = Future<StreamChannel<dynamic>> Function(Uri uri);
 
 Future<StreamChannel<dynamic>> connectWebSocket(Uri uri) async {
   final channel = WebSocketChannel.connect(uri);
-  await channel.ready.timeout(const Duration(seconds: 8));
+  try {
+    await channel.ready.timeout(const Duration(seconds: 8));
+  } catch (_) {
+    unawaited(channel.sink.close());
+    rethrow;
+  }
   return channel;
 }
 
