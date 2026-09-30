@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/suit_glyph.dart';
-import 'table_screen.dart';
+import 'multiplayer_screen.dart';
+import 'single_player_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -38,21 +39,27 @@ class HomeScreen extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const TableScreen(),
-                            ),
-                          );
-                        },
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SinglePlayerScreen(),
+                          ),
+                        ),
                         child: const Text('New game'),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'YOU & NORTH  ·  VS  ·  WEST & EAST',
-                      style: AppText.label(),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MultiplayerScreen(),
+                          ),
+                        ),
+                        child: const Text('Play with friends'),
+                      ),
                     ),
                   ],
                 ),

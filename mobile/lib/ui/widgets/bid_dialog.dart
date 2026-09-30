@@ -15,6 +15,7 @@ class BidPanel extends StatefulWidget {
     required this.handSize,
     required this.maxBid,
     this.partnerBid,
+    this.partnerName = 'North',
     required this.isFirstBidOfHand,
     required this.blindNilEligible,
     required this.onBid,
@@ -33,6 +34,7 @@ class BidPanel extends StatefulWidget {
 
   /// The partner's bid, if they've already bid this hand.
   final Bid? partnerBid;
+  final String partnerName;
   final bool isFirstBidOfHand;
   final bool blindNilEligible;
   final ValueChanged<Bid> onBid;
@@ -82,7 +84,7 @@ class _BidPanelState extends State<BidPanel> {
                   )
                 : TextSpan(
                     children: [
-                      const TextSpan(text: 'North bid '),
+                      TextSpan(text: '${widget.partnerName} bid '),
                       TextSpan(
                         text: '$partner',
                         style: const TextStyle(

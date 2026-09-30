@@ -306,7 +306,7 @@ class _Room {
         if (member.id != hostId) {
           return peer._error('Only the host can start the game.');
         }
-        if (session != null) return;
+        if (session != null) return _sendSnapshot(member);
         _start();
       case PlaceBid(:final bid):
         _play(member, (s, seat) => s.bid(seat, bid));

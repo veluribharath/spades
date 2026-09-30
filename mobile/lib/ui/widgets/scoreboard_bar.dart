@@ -8,19 +8,28 @@ import '../theme/app_theme.dart';
 class ScoreboardBar extends StatelessWidget {
   const ScoreboardBar({
     super.key,
-    required this.teamScores,
-    required this.teamBags,
+    required this.usLabel,
+    required this.themLabel,
+    required this.usScore,
+    required this.themScore,
     required this.config,
     required this.roundNumber,
     required this.handSize,
+    this.leading,
     this.trailing,
   });
 
-  final Map<Team, int> teamScores;
-  final Map<Team, int> teamBags;
+  /// Your partnership is always on the left.
+  final String usLabel;
+  final String themLabel;
+  final int usScore;
+  final int themScore;
   final MatchConfig config;
   final int roundNumber;
   final int handSize;
+
+  /// Optional widget before the left-hand score (the leave button).
+  final Widget? leading;
 
   /// Optional widget after the right-hand score (the scoreboard button).
   final Widget? trailing;
@@ -35,12 +44,9 @@ class ScoreboardBar extends StatelessWidget {
       height: 56,
       child: Row(
         children: [
+          if (leading != null) ...[leading!, const SizedBox(width: 10)],
           Expanded(
-            child: _TeamScore(
-              label: 'You & North',
-              score: teamScores[Team.southNorth]!,
-              alignEnd: false,
-            ),
+            child: _TeamScore(label: usLabel, score: usScore, alignEnd: false),
           ),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -58,8 +64,8 @@ class ScoreboardBar extends StatelessWidget {
           ),
           Expanded(
             child: _TeamScore(
-              label: 'West & East',
-              score: teamScores[Team.westEast]!,
+              label: themLabel,
+              score: themScore,
               alignEnd: true,
             ),
           ),

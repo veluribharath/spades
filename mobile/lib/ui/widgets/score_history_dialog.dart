@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:spades_engine/spades_engine.dart';
+import 'package:spades_engine/multiplayer.dart';
+
+import '../table_perspective.dart';
 import '../theme/app_theme.dart';
 import 'scoreboard_bar.dart';
 
@@ -39,9 +41,9 @@ class TintIconButton extends StatelessWidget {
 /// player review the running score and hand-by-hand history at any time,
 /// not just at the end of a hand.
 class ScoreHistoryButton extends StatelessWidget {
-  const ScoreHistoryButton({super.key, required this.match});
+  const ScoreHistoryButton({super.key, required this.view});
 
-  final MatchState match;
+  final TableView view;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +52,7 @@ class ScoreHistoryButton extends StatelessWidget {
       onPressed: () => showDialog<void>(
         context: context,
         barrierColor: Colors.black.withValues(alpha: 0.6),
-        builder: (_) => ScoreHistoryDialog(match: match),
+        builder: (_) => ScoreHistoryDialog(view: view),
       ),
       child: const CustomPaint(
         size: Size.square(18),
@@ -83,14 +85,15 @@ class _BarsIconPainter extends CustomPainter {
 /// Full score review: running totals plus a hand-by-hand breakdown of
 /// every completed hand this match.
 class ScoreHistoryDialog extends StatelessWidget {
-  const ScoreHistoryDialog({super.key, required this.match});
+  const ScoreHistoryDialog({super.key, required this.view});
 
-  final MatchState match;
+  final TableView view;
 
   @override
   Widget build(BuildContext context) {
-    final us = match.teamScores[Team.southNorth]!;
-    final them = match.teamScores[Team.westEast]!;
+    final p = TablePerspective(view);
+    final us = view.teamScores[p.us]!;
+    final them = view.teamScores[p.them]!;
 
     return Dialog(
       backgroundColor: AppColors.felt,
@@ -129,18 +132,18 @@ class ScoreHistoryDialog extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _TotalCard(
-                        label: 'You & North',
+                        label: p.usLabel,
                         score: us,
-                        bags: match.teamBags[Team.southNorth]!,
+                        bags: view.teamBags[p.us]!,
                         leadBy: us - them,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _TotalCard(
-                        label: 'West & East',
+                        label: p.themLabel,
                         score: them,
-                        bags: match.teamBags[Team.westEast]!,
+                        bags: view.teamBags[p.them]!,
                         leadBy: them - us,
                       ),
                     ),
@@ -160,7 +163,7 @@ class ScoreHistoryDialog extends StatelessWidget {
               ),
               const Divider(height: 1, color: AppColors.hairline),
               Flexible(
-                child: match.handHistory.isEmpty
+                child: view.history.isEmpty
                     ? Padding(
                         padding: const EdgeInsets.symmetric(vertical: 32),
                         child: Text(
@@ -171,10 +174,11 @@ class ScoreHistoryDialog extends StatelessWidget {
                       )
                     : ListView.builder(
                         shrinkWrap: true,
-                        itemCount: match.handHistory.length,
+                        itemCount: view.history.length,
                         itemBuilder: (context, index) => _HandRow(
                           round: index + 1,
-                          results: match.handHistory[index],
+                          us: view.history[index][p.us]!,
+                          them: view.history[index][p.them]!,
                         ),
                       ),
               ),
@@ -237,10 +241,11 @@ class _TotalCard extends StatelessWidget {
 }
 
 class _HandRow extends StatelessWidget {
-  const _HandRow({required this.round, required this.results});
+  const _HandRow({required this.round, required this.us, required this.them});
 
   final int round;
-  final Map<Team, TeamHandScore> results;
+  final HandLine us;
+  final HandLine them;
 
   @override
   Widget build(BuildContext context) {
@@ -260,21 +265,21 @@ class _HandRow extends StatelessWidget {
               style: AppText.display(size: 20, color: AppColors.brass),
             ),
           ),
-          Expanded(child: _teamCell(results[Team.southNorth]!)),
-          Expanded(child: _teamCell(results[Team.westEast]!)),
+          Expanded(child: _teamCell(us)),
+          Expanded(child: _teamCell(them)),
         ],
       ),
     );
   }
 
-  Widget _teamCell(TeamHandScore score) {
-    final delta = score.totalDelta;
+  Widget _teamCell(HandLine line) {
+    final delta = line.delta;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
       children: [
         Text(
-          '${score.teamBid} / ${score.teamTricksWon}',
+          '${line.bid} / ${line.won}',
           style: AppText.ui(size: 13, color: AppColors.sage),
         ),
         const SizedBox(width: 10),

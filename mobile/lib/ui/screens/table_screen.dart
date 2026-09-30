@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:spades_engine/multiplayer.dart';
 import 'package:spades_engine/spades_engine.dart';
-import '../../state/game_controller.dart';
+
+import '../../state/table_client.dart';
+import '../table_perspective.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bid_dialog.dart';
 import '../widgets/hand_fan.dart';
@@ -10,73 +11,148 @@ import '../widgets/score_history_dialog.dart';
 import '../widgets/scoreboard_bar.dart';
 import '../widgets/trick_area.dart';
 
-class TableScreen extends ConsumerWidget {
-  const TableScreen({super.key});
+/// The card table, drawn from the viewing player's chair. Works the same
+/// for single-player and multiplayer: it only reads [client]'s view and
+/// sends actions back through it.
+class TableScreen extends StatefulWidget {
+  const TableScreen({
+    super.key,
+    required this.client,
+    this.onLeave,
+    this.leaveWarning,
+  });
+
+  final TableClient client;
+
+  /// Replaces the default "are you sure" text in the leave dialog.
+  final String? leaveWarning;
+
+  /// Called after the player confirms leaving (defaults to popping the
+  /// route).
+  final VoidCallback? onLeave;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final controller = ref.watch(gameControllerProvider);
-    final match = controller.match;
-    final trick = controller.visibleTrick;
-    final plays = trick?.plays ?? const [];
+  State<TableScreen> createState() => _TableScreenState();
+}
 
-    return Scaffold(
-      body: DecoratedBox(
-        decoration: feltTableDecoration(),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 16, 0),
-                child: ScoreboardBar(
-                  teamScores: match.teamScores,
-                  teamBags: match.teamBags,
-                  config: match.config,
-                  roundNumber: match.roundNumber,
-                  handSize: match.handSize,
-                  trailing: ScoreHistoryButton(match: match),
-                ),
+class _TableScreenState extends State<TableScreen> {
+  @override
+  void initState() {
+    super.initState();
+    widget.client.addListener(_onClientChanged);
+  }
+
+  @override
+  void didUpdateWidget(TableScreen old) {
+    super.didUpdateWidget(old);
+    if (old.client != widget.client) {
+      old.client.removeListener(_onClientChanged);
+      widget.client.addListener(_onClientChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.client.removeListener(_onClientChanged);
+    super.dispose();
+  }
+
+  void _onClientChanged() {
+    final error = widget.client.takeError();
+    if (error != null && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(error, style: AppText.ui(size: 14)),
+            backgroundColor: AppColors.feltRaised,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _confirmLeave() async {
+    final multiplayer = widget.client.isMultiplayer;
+    final leave = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.felt,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: AppColors.hairline),
+        ),
+        title: Text('Leave this game?', style: AppText.display(size: 28)),
+        content: Text(
+          widget.leaveWarning ??
+              (multiplayer
+                  ? 'A bot will take over your seat. You can rejoin with '
+                        'the room code while the game is still going.'
+                  : 'This match will be lost.'),
+          style: AppText.ui(size: 14, color: AppColors.sage, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Stay', style: AppText.ui(color: AppColors.text)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Leave',
+              style: AppText.ui(
+                color: AppColors.brass,
+                weight: FontWeight.w600,
               ),
-              Expanded(
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Align(
-                      alignment: const Alignment(0, -0.95),
-                      child: _OpponentSeat(seat: Seat.north, match: match),
-                    ),
-                    Align(
-                      alignment: const Alignment(-0.94, -0.62),
-                      child: _OpponentSeat(seat: Seat.west, match: match),
-                    ),
-                    Align(
-                      alignment: const Alignment(0.94, -0.62),
-                      child: _OpponentSeat(seat: Seat.east, match: match),
-                    ),
-                    TrickArea(
-                      plays: {for (final e in plays) e.key: e.value},
-                      winner: plays.isEmpty ? null : currentWinner(trick!),
-                    ),
-                    if (controller.isHumanBidTurn)
-                      BidPanel(
-                        config: match.config,
-                        handSize: match.handSize,
-                        maxBid: match.maxBidFor(kHumanSeat),
-                        partnerBid: match.bids[kHumanSeat.partner],
-                        isFirstBidOfHand: match.bids.isEmpty,
-                        blindNilEligible: match.config.blindNilEnabled,
-                        onBid: controller.submitHumanBid,
-                      ),
-                    if (match.phase == HandPhase.complete)
-                      _HandSummaryOverlay(controller: controller),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _HumanSeat(controller: controller),
-              ),
-            ],
+            ),
+          ),
+        ],
+      ),
+    );
+    if (leave != true || !mounted) return;
+    _leave();
+  }
+
+  void _leave() {
+    widget.client.leave();
+    if (widget.onLeave != null) {
+      widget.onLeave!();
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final client = widget.client;
+    final view = client.view;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (view?.matchOver ?? false) {
+          _leave();
+        } else {
+          _confirmLeave();
+        }
+      },
+      child: Scaffold(
+        body: DecoratedBox(
+          decoration: feltTableDecoration(),
+          child: SafeArea(
+            child: view == null
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.brass),
+                  )
+                : _Table(
+                    client: client,
+                    view: view,
+                    onLeave: _confirmLeave,
+                    onFinished: _leave,
+                  ),
           ),
         ),
       ),
@@ -84,50 +160,180 @@ class TableScreen extends ConsumerWidget {
   }
 }
 
-String _seatName(Seat seat) => switch (seat) {
-  Seat.south => 'You',
-  Seat.west => 'West',
-  Seat.north => 'North',
-  Seat.east => 'East',
-};
+class _Table extends StatelessWidget {
+  const _Table({
+    required this.client,
+    required this.view,
+    required this.onLeave,
+    required this.onFinished,
+  });
 
-/// "bid 2 · won 1" while playing, "bid 2" while bidding, nothing before
-/// the seat has bid.
-String? _bidSummary(MatchState match, Seat seat) {
-  final bid = match.bids[seat];
-  if (bid == null) return null;
-  if (match.phase == HandPhase.bidding) return 'bid $bid';
-  return 'bid $bid · won ${match.tricksWonThisHand[seat] ?? 0}';
-}
-
-class _OpponentSeat extends StatelessWidget {
-  const _OpponentSeat({required this.seat, required this.match});
-
-  final Seat seat;
-  final MatchState match;
+  final TableClient client;
+  final TableView view;
+  final VoidCallback onLeave;
+  final VoidCallback onFinished;
 
   @override
   Widget build(BuildContext context) {
-    final isTurn =
-        (match.phase == HandPhase.bidding && match.nextBidder == seat) ||
-        (match.phase == HandPhase.playing &&
-            match.currentTrick!.nextToPlay == seat);
+    final p = TablePerspective(view);
+    final partnerBid = view.info(p.me.partner).bid;
 
-    final tag = _SeatTag(
-      name: _seatName(seat),
-      detail: _bidSummary(match, seat),
-      acting: isTurn,
+    return Column(
+      children: [
+        if (client.status == ConnectionStatus.reconnecting ||
+            client.status == ConnectionStatus.connecting)
+          const _ConnectionBanner(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: ScoreboardBar(
+            usLabel: p.usLabel,
+            themLabel: p.themLabel,
+            usScore: view.teamScores[p.us]!,
+            themScore: view.teamScores[p.them]!,
+            config: view.config,
+            roundNumber: view.roundNumber,
+            handSize: view.handSize,
+            leading: TintIconButton(
+              tooltip: 'Leave game',
+              onPressed: onLeave,
+              child: const Icon(
+                Icons.close_rounded,
+                size: 18,
+                color: AppColors.text,
+              ),
+            ),
+            trailing: ScoreHistoryButton(view: view),
+          ),
+        ),
+        Expanded(
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Align(
+                alignment: const Alignment(0, -0.95),
+                child: _OpponentSeat(
+                  seat: p.fromScreen(Seat.north),
+                  view: view,
+                  showHand: true,
+                ),
+              ),
+              Align(
+                alignment: const Alignment(-0.94, -0.62),
+                child: _OpponentSeat(seat: p.fromScreen(Seat.west), view: view),
+              ),
+              Align(
+                alignment: const Alignment(0.94, -0.62),
+                child: _OpponentSeat(seat: p.fromScreen(Seat.east), view: view),
+              ),
+              TrickArea(
+                plays: {
+                  for (final e in view.trickPlays) p.toScreen(e.key): e.value,
+                },
+                winner: view.trickWinner == null
+                    ? null
+                    : p.toScreen(view.trickWinner!),
+              ),
+              if (view.isMyBidTurn)
+                BidPanel(
+                  config: view.config,
+                  handSize: view.handSize,
+                  maxBid: view.maxBid,
+                  partnerBid: partnerBid,
+                  partnerName: p.name(p.me.partner),
+                  isFirstBidOfHand: view.isFirstBid,
+                  blindNilEligible: view.config.blindNilEnabled,
+                  onBid: client.bid,
+                ),
+              if (view.phase == HandPhase.complete)
+                _HandSummaryOverlay(
+                  view: view,
+                  onNextHand: client.nextHand,
+                  onFinished: onFinished,
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _HumanSeat(view: view, onPlay: client.play),
+        ),
+      ],
     );
-    // Only North (across the table) shows its hand; the side seats stay
-    // a single tag so they never crowd the trick.
-    if (seat != Seat.north) return tag;
+  }
+}
+
+class _ConnectionBanner extends StatelessWidget {
+  const _ConnectionBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      color: AppColors.brass.withValues(alpha: 0.14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox.square(
+            dimension: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              color: AppColors.brass,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'Reconnecting…',
+            style: AppText.ui(size: 12, color: AppColors.brass),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "bid 2 · won 1" while playing, "bid 2" while bidding, nothing before
+/// the seat has bid; connection trouble takes precedence.
+String? _seatDetail(TableView view, Seat seat) {
+  final info = view.info(seat);
+  if (info.autopilot) return 'bot playing';
+  if (!info.connected) return 'offline';
+  final bid = info.bid;
+  if (bid == null) return null;
+  if (view.phase == HandPhase.bidding) return 'bid $bid';
+  return 'bid $bid · won ${info.tricksWon}';
+}
+
+class _OpponentSeat extends StatelessWidget {
+  const _OpponentSeat({
+    required this.seat,
+    required this.view,
+    this.showHand = false,
+  });
+
+  final Seat seat;
+  final TableView view;
+
+  /// Only the player across (screen North) shows a hand; the side seats
+  /// stay a single tag so they never crowd the trick.
+  final bool showHand;
+
+  @override
+  Widget build(BuildContext context) {
+    final tag = _SeatTag(
+      name: view.info(seat).name,
+      detail: _seatDetail(view, seat),
+      acting: view.toAct == seat,
+      dimmed: !view.info(seat).connected,
+    );
+    if (!showHand) return tag;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         tag,
         const SizedBox(height: 10),
-        _MiniBacks(count: match.hands[seat]!.length),
+        _MiniBacks(count: view.info(seat).cardCount),
       ],
     );
   }
@@ -181,69 +387,94 @@ class _MiniBacks extends StatelessWidget {
 }
 
 /// Seat tag: a tint pill at rest; a brass hairline with a brass dot while
-/// a bot is thinking.
+/// that player is deciding.
 class _SeatTag extends StatelessWidget {
-  const _SeatTag({required this.name, this.detail, required this.acting});
+  const _SeatTag({
+    required this.name,
+    this.detail,
+    required this.acting,
+    this.dimmed = false,
+  });
 
   final String name;
   final String? detail;
   final bool acting;
+  final bool dimmed;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
+    return AnimatedOpacity(
       duration: AppMotion.quick,
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: AppColors.tint,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: acting ? AppColors.brass : Colors.transparent,
+      opacity: dimmed ? 0.6 : 1,
+      child: AnimatedContainer(
+        duration: AppMotion.quick,
+        height: 28,
+        constraints: const BoxConstraints(maxWidth: 170),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.tint,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: acting ? AppColors.brass : Colors.transparent,
+          ),
         ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (acting) ...[
-            Container(
-              width: 6,
-              height: 6,
-              decoration: const BoxDecoration(
-                color: AppColors.brass,
-                shape: BoxShape.circle,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (acting) ...[
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: AppColors.brass,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Flexible(
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.ui(size: 12, weight: FontWeight.w600),
               ),
             ),
-            const SizedBox(width: 8),
+            if (detail != null) ...[
+              const SizedBox(width: 8),
+              Text(
+                detail!,
+                maxLines: 1,
+                style: AppText.ui(size: 12, color: AppColors.sage),
+              ),
+            ],
           ],
-          Text(name, style: AppText.ui(size: 12, weight: FontWeight.w600)),
-          if (detail != null) ...[
-            const SizedBox(width: 8),
-            Text(detail!, style: AppText.ui(size: 12, color: AppColors.sage)),
-          ],
-        ],
+        ),
       ),
     );
   }
 }
 
 class _HumanSeat extends StatelessWidget {
-  const _HumanSeat({required this.controller});
+  const _HumanSeat({required this.view, required this.onPlay});
 
-  final GameController controller;
+  final TableView view;
+  final ValueChanged<PlayingCard> onPlay;
 
   @override
   Widget build(BuildContext context) {
-    final match = controller.match;
-    final hand = match.hands[kHumanSeat]!;
-    final bid = match.bids[kHumanSeat];
-    final acting = controller.isHumanBidTurn || controller.isHumanPlayTurn;
+    final me = view.seat;
+    final hand = view.hand;
+    final bid = view.info(me).bid;
+    final acting = view.isMyBidTurn || view.isMyPlayTurn;
 
     String? turnLabel;
-    if (controller.isHumanBidTurn) {
+    if (view.isMyBidTurn) {
       turnLabel = 'Your turn to bid';
-    } else if (controller.isHumanPlayTurn) {
-      final lead = match.currentTrick?.leadSuit;
+    } else if (view.isMyPlayTurn) {
+      final lead = view.trickPlays.isEmpty
+          ? null
+          : view.trickPlays.first.value.suit;
       turnLabel = lead == null
           ? 'Your turn · lead'
           : hand.any((c) => c.suit == lead)
@@ -257,15 +488,11 @@ class _HumanSeat extends StatelessWidget {
         if (acting)
           _YourTurnPill(label: turnLabel!)
         else
-          _SeatTag(
-            name: 'You',
-            detail: _bidSummary(match, kHumanSeat),
-            acting: false,
-          ),
+          _SeatTag(name: 'You', detail: _seatDetail(view, me), acting: false),
         if (acting && bid != null) ...[
           const SizedBox(height: 8),
           Text(
-            'You bid $bid · won ${match.tricksWonThisHand[kHumanSeat] ?? 0}',
+            'You bid $bid · won ${view.info(me).tricksWon}',
             style: AppText.ui(size: 12, color: AppColors.sage),
           ),
         ],
@@ -279,10 +506,8 @@ class _HumanSeat extends StatelessWidget {
               cards: hand,
               faceUp: true,
               cardWidth: 66,
-              legalCards: controller.isHumanPlayTurn
-                  ? controller.legalHumanCards
-                  : null,
-              onCardTap: controller.playHumanCard,
+              legalCards: view.isMyPlayTurn ? view.legalCards : null,
+              onCardTap: onPlay,
             ),
           ),
         ),
@@ -323,15 +548,32 @@ class _YourTurnPill extends StatelessWidget {
 }
 
 class _HandSummaryOverlay extends StatelessWidget {
-  const _HandSummaryOverlay({required this.controller});
+  const _HandSummaryOverlay({
+    required this.view,
+    required this.onNextHand,
+    required this.onFinished,
+  });
 
-  final GameController controller;
+  final TableView view;
+  final VoidCallback onNextHand;
+  final VoidCallback onFinished;
 
   @override
   Widget build(BuildContext context) {
-    final match = controller.match;
-    final results = match.handHistory.last;
-    final finished = match.status == MatchStatus.finished;
+    final p = TablePerspective(view);
+    final results = view.history.last;
+    final finished = view.matchOver;
+    final waitingOn = [
+      for (final s in view.awaitingReady)
+        if (s != p.me) p.name(s),
+    ];
+
+    final String title;
+    if (finished) {
+      title = view.winner == p.us ? 'You win the match' : '${p.themLabel} win';
+    } else {
+      title = 'Round ${view.roundNumber} complete';
+    }
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 420),
@@ -353,33 +595,38 @@ class _HandSummaryOverlay extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            finished
-                ? (match.winner == Team.southNorth
-                      ? 'You win the match'
-                      : 'West & East win')
-                : 'Round ${match.roundNumber} complete',
-            style: AppText.display(size: 30),
-          ),
+          Text(title, style: AppText.display(size: 30)),
           const SizedBox(height: 18),
-          for (final team in Team.values) ...[
+          for (final team in [p.us, p.them]) ...[
             _SummaryRow(
-              label: team == Team.southNorth ? 'You & North' : 'West & East',
-              bid: results[team]!.teamBid,
-              won: results[team]!.teamTricksWon,
-              delta: results[team]!.totalDelta,
-              total: match.teamScores[team]!,
+              label: p.teamLabel(team),
+              line: results[team]!,
+              total: view.teamScores[team]!,
             ),
-            if (team == Team.southNorth)
+            if (team == p.us)
               const Divider(height: 1, color: AppColors.hairline),
           ],
           const SizedBox(height: 22),
-          ElevatedButton(
-            onPressed: finished
-                ? () => Navigator.pop(context)
-                : controller.startNextHand,
-            child: Text(finished ? 'Back to menu' : 'Next hand'),
-          ),
+          if (finished)
+            ElevatedButton(
+              onPressed: onFinished,
+              child: const Text('Back to menu'),
+            )
+          else if (view.iAmReady)
+            OutlinedButton(
+              onPressed: null,
+              child: Text(
+                waitingOn.isEmpty
+                    ? 'Dealing…'
+                    : 'Waiting for ${waitingOn.join(' & ')}',
+                overflow: TextOverflow.ellipsis,
+              ),
+            )
+          else
+            ElevatedButton(
+              onPressed: onNextHand,
+              child: const Text('Next hand'),
+            ),
         ],
       ),
     );
@@ -389,16 +636,12 @@ class _HandSummaryOverlay extends StatelessWidget {
 class _SummaryRow extends StatelessWidget {
   const _SummaryRow({
     required this.label,
-    required this.bid,
-    required this.won,
-    required this.delta,
+    required this.line,
     required this.total,
   });
 
   final String label;
-  final int bid;
-  final int won;
-  final int delta;
+  final HandLine line;
   final int total;
 
   @override
@@ -411,20 +654,25 @@ class _SummaryRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label.toUpperCase(), style: AppText.label(size: 10)),
+                Text(
+                  label.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.label(size: 10),
+                ),
                 const SizedBox(height: 4),
                 Text(
-                  'bid $bid · won $won',
+                  'bid ${line.bid} · won ${line.won}',
                   style: AppText.ui(size: 13, color: AppColors.sage),
                 ),
               ],
             ),
           ),
           Text(
-            formatDelta(delta),
+            formatDelta(line.delta),
             style: AppText.display(
               size: 24,
-              color: delta < 0 ? AppColors.loss : AppColors.text,
+              color: line.delta < 0 ? AppColors.loss : AppColors.text,
             ),
           ),
           const SizedBox(width: 16),
