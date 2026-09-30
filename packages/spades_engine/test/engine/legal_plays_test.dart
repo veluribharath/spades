@@ -1,10 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:spades_app/core/engine/legal_plays.dart';
-import 'package:spades_app/core/models/card.dart';
-import 'package:spades_app/core/models/rank.dart';
-import 'package:spades_app/core/models/seat.dart';
-import 'package:spades_app/core/models/suit.dart';
-import 'package:spades_app/core/models/trick.dart';
+import 'package:spades_engine/spades_engine.dart';
+import 'package:test/test.dart';
 
 const cAceH = PlayingCard(Suit.hearts, Rank.ace);
 const c2H = PlayingCard(Suit.hearts, Rank.two);

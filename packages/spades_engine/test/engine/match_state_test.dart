@@ -1,12 +1,7 @@
 import 'dart:math';
 
-import 'package:flutter_test/flutter_test.dart';
-import 'package:spades_app/core/ai/bot_bidder.dart';
-import 'package:spades_app/core/ai/bot_card_player.dart';
-import 'package:spades_app/core/engine/match_state.dart';
-import 'package:spades_app/core/models/bid.dart';
-import 'package:spades_app/core/models/match_config.dart';
-import 'package:spades_app/core/models/seat.dart';
+import 'package:spades_engine/spades_engine.dart';
+import 'package:test/test.dart';
 
 /// Drives a [MatchState] to completion using only the bot heuristics,
 /// exercising the full bidding -> playing -> scoring -> next-hand loop.

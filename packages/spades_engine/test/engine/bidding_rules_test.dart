@@ -1,7 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:spades_app/core/engine/bidding_rules.dart';
-import 'package:spades_app/core/models/bid.dart';
-import 'package:spades_app/core/models/match_config.dart';
+import 'package:spades_engine/spades_engine.dart';
+import 'package:test/test.dart';
 
 void main() {
   test('nil bid rejected when nil is disabled', () {

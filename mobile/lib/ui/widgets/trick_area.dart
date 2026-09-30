@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../core/models/card.dart';
-import '../../core/models/seat.dart';
+import 'package:spades_engine/spades_engine.dart';
 import '../theme/app_theme.dart';
 import 'playing_card_widget.dart';
 

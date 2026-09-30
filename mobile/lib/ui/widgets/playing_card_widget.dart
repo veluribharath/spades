@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../core/models/card.dart';
+import 'package:spades_engine/spades_engine.dart';
 import '../theme/app_theme.dart';
 import 'suit_glyph.dart';
 

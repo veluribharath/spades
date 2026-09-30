@@ -4,14 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/ai/bot_bidder.dart';
-import '../core/ai/bot_card_player.dart';
-import '../core/engine/match_state.dart';
-import '../core/models/bid.dart';
-import '../core/models/card.dart';
-import '../core/models/match_config.dart';
-import '../core/models/seat.dart';
-import '../core/models/trick.dart';
+import 'package:spades_engine/spades_engine.dart';
 
 /// The human always sits South; the other three seats are bots. This is
 /// the only human/bot assignment for v1 — see docs/PLAN.md milestone 7

@@ -1,8 +1,7 @@
 import 'dart:math';
 
-import 'package:flutter_test/flutter_test.dart';
-import 'package:spades_app/core/engine/dealer.dart';
-import 'package:spades_app/core/models/seat.dart';
+import 'package:spades_engine/spades_engine.dart';
+import 'package:test/test.dart';
 
 void main() {
   test('deals 13 unique cards to each of the 4 seats', () {

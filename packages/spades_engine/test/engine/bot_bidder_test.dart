@@ -1,9 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:spades_app/core/ai/bot_bidder.dart';
-import 'package:spades_app/core/models/card.dart';
-import 'package:spades_app/core/models/match_config.dart';
-import 'package:spades_app/core/models/rank.dart';
-import 'package:spades_app/core/models/suit.dart';
+import 'package:spades_engine/spades_engine.dart';
+import 'package:test/test.dart';
 
 /// Regression test: with Nil disabled (Progressive Spades), a weak hand
 /// used to always get bumped up to a minimum bid of 1 — there was no way

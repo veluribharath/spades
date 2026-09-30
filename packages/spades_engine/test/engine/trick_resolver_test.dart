@@ -1,10 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:spades_app/core/engine/trick_resolver.dart';
-import 'package:spades_app/core/models/card.dart';
-import 'package:spades_app/core/models/rank.dart';
-import 'package:spades_app/core/models/seat.dart';
-import 'package:spades_app/core/models/suit.dart';
-import 'package:spades_app/core/models/trick.dart';
+import 'package:spades_engine/spades_engine.dart';
+import 'package:test/test.dart';
 
 void main() {
   test('highest card of suit led wins when no spades played', () {

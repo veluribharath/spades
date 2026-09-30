@@ -1,8 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:spades_app/core/ai/bot_bidder.dart';
-import 'package:spades_app/core/engine/match_state.dart';
+import 'package:spades_engine/spades_engine.dart';
 import 'package:spades_app/state/game_controller.dart';
 
 /// Regression test for a bug where the 4th card of a trick (and the

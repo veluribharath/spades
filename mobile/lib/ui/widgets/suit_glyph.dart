@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/models/suit.dart';
+import 'package:spades_engine/spades_engine.dart';
 import '../theme/app_theme.dart';
 
 /// A suit drawn as vector paths rather than a font glyph, so pips look

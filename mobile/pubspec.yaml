@@ -45,6 +45,14 @@ dependencies:
   # HUD/typography.
   google_fonts: ^6.2.1
 
+  # Rules engine, bots, game sessions and the room server (pure Dart,
+  # shared with the standalone multiplayer server).
+  spades_engine:
+    path: ../packages/spades_engine
+
+  # WebSocket client for multiplayer (works on mobile, desktop and web).
+  web_socket_channel: ^3.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

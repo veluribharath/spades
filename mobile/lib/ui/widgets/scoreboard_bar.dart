@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/models/match_config.dart';
-import '../../core/models/seat.dart';
+import 'package:spades_engine/spades_engine.dart';
 import '../theme/app_theme.dart';
 
 /// The table HUD: each partnership's score at the edges, the round in

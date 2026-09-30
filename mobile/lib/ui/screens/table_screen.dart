@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/engine/match_state.dart';
-import '../../core/engine/trick_resolver.dart';
-import '../../core/models/seat.dart';
+import 'package:spades_engine/spades_engine.dart';
 import '../../state/game_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bid_dialog.dart';

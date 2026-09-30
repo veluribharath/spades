@@ -1,8 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:spades_app/core/engine/scoring.dart';
-import 'package:spades_app/core/models/bid.dart';
-import 'package:spades_app/core/models/match_config.dart';
-import 'package:spades_app/core/models/seat.dart';
+import 'package:spades_engine/spades_engine.dart';
+import 'package:test/test.dart';
 
 void main() {
   const config = MatchConfig();

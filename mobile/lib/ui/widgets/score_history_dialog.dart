@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/engine/match_state.dart';
-import '../../core/engine/scoring.dart';
-import '../../core/models/seat.dart';
+import 'package:spades_engine/spades_engine.dart';
 import '../theme/app_theme.dart';
 import 'scoreboard_bar.dart';
 

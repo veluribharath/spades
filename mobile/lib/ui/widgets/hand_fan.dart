@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../core/models/card.dart';
+import 'package:spades_engine/spades_engine.dart';
 import 'playing_card_widget.dart';
 
 /// Lays a hand of cards out in a gentle arc, fanned like a hand physically
